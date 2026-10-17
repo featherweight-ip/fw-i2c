@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://dv-flow.github.io/flow.dv.schema.json
+fragment:
+  name: pss
+  # The operation model (docs/design/operation-model.md) and the programming
+  # APIs generated from it, after fw-wb-dma's src/pss/flow.yaml. The register
+  # package (fw_i2c_regs_pkg) is generated from src/rdl by reg-model-pss;
+  # nothing here declares it.
+
+  tasks:
+  # Source order derived from the layout (root component, then its
+  # functions), not a glob; see fw-wb-dma for why.
+  - name: src
+    uses: pss.FileSet
+    with:
+      root: fw_i2c_c
+      profile: total-topological
+      provided: [fw_i2c_regs_pkg]
+
+  # The polling profile (no event wait) must elaborate too. Both target_cfg
+  # constants are named: a provider that declares the version declares all.
+  - name: check-nonblocking
+    uses: pssc.Check
+    needs: [reg-model-pss, src]
+    with:
+      order_check: false
+      target_cfg: ["HAVE_EVENT_WAIT=false", "HAVE_RUNTIME_SOLVER=false"]
+
+  - name: check
+    uses: pssc.Check
+    needs: [reg-model-pss, src]
+    with:
+      order_check: false
+
+  # fw_i2c_c_pkg.sv (the API, its import interface and the implementation)
+  # plus the bundled pssc_reg_pkg.sv. Event-wait profile: wait_related_event()
+  # waits for notify_irq(), so a bench using it runs with CTR.IEN = 1.
+  - root: op-model-sv
+    uses: pssc.OpModelSv
+    needs: [check]
+    with:
+      root: fw_i2c_c
+      package_name: fw_i2c_c_pkg
+      core_copy: true

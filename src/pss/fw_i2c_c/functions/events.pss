@@ -1,0 +1,27 @@
+// The one platform-dependent line, and the environment's entry point.
+import fw_i2c_cfg_pkg::*;
+
+extend component fw_i2c_c {
+    // Return when the device MAY have progressed; callers re-check. With an
+    // event path, wait for an interrupt (notify_irq); otherwise yield, which
+    // a simulation adapter turns into elapsed time.
+    target function void wait_related_event() {
+        compile if (fw_i2c_cfg_pkg::HAS_EVENT_WAIT) {
+            wake.get();
+        } else {
+            yield;
+        }
+    }
+}
+
+// Called by the platform on a rising edge of the interrupt line. Gated as a
+// whole: nothing in the model calls it.
+compile if (fw_i2c_cfg_pkg::HAS_EVENT_WAIT) {
+    extend component fw_i2c_c {
+        export target function notify_irq;
+
+        target function void notify_irq() {
+            wake.try_put(1);
+        }
+    }
+}

@@ -18,6 +18,10 @@ the status column as each step finishes.
 
 ## Notes
 
+- Steps 2, 5, 6 and 7 are expanded in {doc}`bench-plan` (T1–T6, E1–E12;
+  reviewed 2026-10-17). Status for those steps is kept there. The kit's `set_prescale()` (step 4) is on
+  `fw-proto-i2c` `origin/main` (930dafb) as fetched in `packages/`.
+
 - Setup: `ivpm update` (done 2026-10-17; fetches into `packages/`, with
   Forgejo-hosted repos mapped to the local Forgejo), then once
   `uv pip install --python packages/python/bin/python -e packages/fw-hdl/python`

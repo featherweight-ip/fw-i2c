@@ -26,6 +26,13 @@ package:
       dep-set: use
 
   # Building, verifying, lowering, synthesizing and documenting the IP.
+  #
+  # NOTE (2026-10-17): fw-i2c needs commits that are on the local `main` of
+  # four clones but not yet pushed: fw-proto-i2c (i2c_tlm_bus), fw-hdl
+  # (FW_REG_RO/WO decode access, pulse_mask), peakrdl-fw-hdl (.access /
+  # .pulse_mask emission) and peakrdl-pss (singlepulse on write-only fields).
+  # A fresh `ivpm update` fetches the remote heads, without them, until they
+  # are pushed. See docs/design/bench-plan.md section 9.
   - name: dev
     description: The use set plus the reference core, VIP, tools and Sphinx.
     uses: [use]
@@ -55,6 +62,25 @@ package:
     - name: dv-flow-librdl
       url: https://git.dvkit.org/dv-flow/dv-flow-librdl.git
       dep-set: default-dev
+    # RDL -> PSS register model, for the op-model (bench-plan T2/T4).
+    - name: peakrdl-pss
+      url: https://git.dvkit.org/psstools/peakrdl-pss.git
+      dep-set: default-dev
+
+    # PSS operation model (src/pss/): parser, compiler (pssc.OpModelSv) and
+    # its dfm task library. Same sources as fw-wb-dma.
+    - name: pssc
+      url: https://git.dvkit.org/psstools/pssc.git
+      dep-set: dev
+    - name: pssparser
+      url: https://git.dvkit.org/psstools/pssparser.git
+      dep-set: default-dev
+    - name: dv-flow-libpss
+      url: https://github.com/dv-flow/dv-flow-libpss.git
+      dep-set: default-dev
+    - name: agent-skills-pss
+      url: https://git.dvkit.org/psstools/agent-skills-pss.git
+      deps: skip
 
     # Verification: I2C and Wishbone VIP for the back-to-back bench.
     - name: fwvip-i2c

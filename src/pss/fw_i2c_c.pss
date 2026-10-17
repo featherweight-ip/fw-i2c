@@ -1,0 +1,21 @@
+// fw-i2c operation model: the device component. Operations are in
+// fw_i2c_c/functions/, one per file. Specification:
+// docs/design/operation-model.md.
+import addr_reg_pkg::*;
+import sync_pkg::*;
+import fw_i2c_cfg_pkg::*;
+import fw_i2c_regs_pkg::*;
+import fw_i2c_types_pkg::*;
+
+// The OpenCores I2C-Master programming model (R76), on fw_i2c_regs.
+component fw_i2c_c {
+    fw_i2c_regs_c     regs;
+    // Posted by notify_irq() on an interrupt; consumed by
+    // wait_related_event() in the event-wait profile. Deliberately not
+    // inside a `compile if` (a declaration there is invisible to later files).
+    channel_c<bit, 1> wake;
+
+    solve function void initialize(addr_handle_t base) {
+        regs.set_handle(base);
+    }
+}

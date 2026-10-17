@@ -1,0 +1,11 @@
+// fw-i2c operation model: the target-configuration adapter, after
+// fw-wb-dma's wb_dma_cfg_pkg.pss. pssc injects target_cfg_pkg ahead of these
+// sources; when nothing does (a bare parser run) the richer model is the
+// default. The guard is nested: `compile has(V) && X` is rejected.
+package fw_i2c_cfg_pkg {
+    compile if (compile has(target_cfg_pkg::TARGET_CFG_VERSION)) {
+        static const bool HAS_EVENT_WAIT = target_cfg_pkg::HAVE_EVENT_WAIT;
+    } else {
+        static const bool HAS_EVENT_WAIT = true;
+    }
+}

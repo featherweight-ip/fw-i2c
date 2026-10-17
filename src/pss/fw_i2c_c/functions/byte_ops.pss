@@ -1,0 +1,88 @@
+// The byte operations. Each has a non-blocking half (<op>_start: TXR, then
+// one CR write carrying the command AND IACK, which clears the previous
+// operation's IF) and a blocking one (<op>: _start, then completion_wait()).
+// CR and TXR are written whole: they are write-only and share their offsets
+// with SR and RXR, so a read-modify-write (write_field) would read the wrong
+// register.
+import fw_i2c_regs_pkg::*;
+import fw_i2c_types_pkg::*;
+
+extend component fw_i2c_c {
+    export target function address_start;
+    export target function address;
+    export target function write_byte_start;
+    export target function write_byte;
+    export target function read_byte_start;
+    export target function read_byte;
+    export target function stop_start;
+    export target function stop;
+
+    // START (or repeated START) and an address byte, R/W bit included. Also
+    // each header byte of a 10-bit address that software sequences.
+    target function void address_start(bit[8] addr_byte) {
+        fw_i2c_regs__TXR_s txr;
+        fw_i2c_regs__CR_s  cr;
+        txr.DATA = addr_byte;
+        cr.STA  = 1;
+        cr.WR   = 1;
+        cr.IACK = 1;
+        regs.TXR.write(txr);
+        regs.CR.write(cr);
+    }
+
+    target function fw_i2c_result_s address(bit[8] addr_byte) {
+        address_start(addr_byte);
+        return completion_wait();
+    }
+
+    // Send one byte; with stop, a STOP after its acknowledge.
+    target function void write_byte_start(bit[8] data, bit stop) {
+        fw_i2c_regs__TXR_s txr;
+        fw_i2c_regs__CR_s  cr;
+        txr.DATA = data;
+        cr.WR   = 1;
+        cr.STO  = stop;
+        cr.IACK = 1;
+        regs.TXR.write(txr);
+        regs.CR.write(cr);
+    }
+
+    target function fw_i2c_result_s write_byte(bit[8] data, bit stop) {
+        write_byte_start(data, stop);
+        return completion_wait();
+    }
+
+    // Receive one byte and acknowledge it (nack = 0) or not (nack = 1, the
+    // last byte); with stop, a STOP after.
+    target function void read_byte_start(bit nack, bit stop) {
+        fw_i2c_regs__CR_s cr;
+        cr.RD   = 1;
+        cr.ACK  = nack;
+        cr.STO  = stop;
+        cr.IACK = 1;
+        regs.CR.write(cr);
+    }
+
+    target function fw_i2c_result_s read_byte(bit nack, bit stop) {
+        fw_i2c_result_s    res;
+        fw_i2c_regs__RXR_s rxr;
+        read_byte_start(nack, stop);
+        res = completion_wait();
+        rxr = regs.RXR.read();
+        res.data = rxr.DATA;
+        return res;
+    }
+
+    // A STOP on its own.
+    target function void stop_start() {
+        fw_i2c_regs__CR_s cr;
+        cr.STO  = 1;
+        cr.IACK = 1;
+        regs.CR.write(cr);
+    }
+
+    target function fw_i2c_result_s stop() {
+        stop_start();
+        return completion_wait();
+    }
+}

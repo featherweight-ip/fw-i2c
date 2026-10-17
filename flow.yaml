@@ -11,19 +11,39 @@ package:
 
   # The methodology-neutral DV archetype (dv-flow-libproject): the standard
   # verbs (tests, smoke, lint-rtl, tests-info, --sim, --build).
-  uses: project.dv
+  uses: project.dv.uvm
   package-map: "${{ env.IVPM_PACKAGES }}/dv-flow-package-map.yaml"
 
+  with:
+    images:
+      type: list
+      value: [ref]
+      values: [ref]
+      cli: true
+      desc: Views the universal tests run on (bench-plan §3.4)
+    view_tb:
+      type: map
+      value:
+        ref: [oc_i2c_ref_arm.sv, hdl_top_ref.sv, hvl_top_ref.sv]
+    view_top:
+      type: map
+      value:
+        ref: [hvl_top_ref]
+
   imports:
-  - project.dv
+  - project.dv.uvm
   - hdlsim
   - hdllint
   - fw.proto.wb
   - fw.proto.i2c
+  - rdl
 
   fragments:
+  - src/rdl/flow.yaml
+  - src/pss/flow.yaml
   - src/ref/flow.yaml
   - tests/ref/flow.yaml
+  - tests/uvm/flow.yaml
 
   tasks:
   - override: src-rtl
@@ -43,7 +63,7 @@ package:
       waivers: lint-waivers.yaml
 
   - override: tests
-    needs: [ref-wb32]
+    needs: [ref-wb32, uvm.uvm-universal]
 
   - override: smoke
     needs: [ref-wb32]

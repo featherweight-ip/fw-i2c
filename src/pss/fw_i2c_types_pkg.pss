@@ -1,0 +1,29 @@
+// fw-i2c operation model: the data the operations exchange. No register
+// layout here -- that is generated from the RDL (fw_i2c_regs_pkg).
+// Specification: docs/design/operation-model.md.
+package fw_i2c_types_pkg {
+
+    // The SR fields software acts on, as read when an operation completes.
+    // Named bits rather than a packed byte, so a comparison that fails names
+    // the bit. `irq_flag` is SR.IF (`if` is a keyword).
+    struct fw_i2c_sr_s {
+        bit rxack;
+        bit busy;
+        bit al;
+        bit tip;
+        bit irq_flag;
+    }
+
+    // One probe of the completion condition: SR, and whether IF is set.
+    struct fw_i2c_check_s {
+        bit         done;
+        fw_i2c_sr_s sr;
+    }
+
+    // What a byte operation returns: SR at completion, and for read_byte the
+    // byte read (RXR); 0 otherwise.
+    struct fw_i2c_result_s {
+        fw_i2c_sr_s sr;
+        bit[8]      data;
+    }
+}

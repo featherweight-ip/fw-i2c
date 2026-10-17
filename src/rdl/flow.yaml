@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://dv-flow.github.io/flow.dv.schema.json
+#
+# fw-i2c's register map (fw_i2c_regs.rdl: the R76 registers in
+# oc_i2c_regs.rdl on a 4-byte stride) and the two models generated from it:
+# the fw-hdl register block the design is built on, and the PSS register
+# model the operation model (src/pss/) programs the device through. Both come
+# from the one RDL, so the design and the op-model cannot disagree on the map.
+fragment:
+  tasks:
+  # Only the top wrapper: oc_i2c_regs.rdl is included by it, and is not a
+  # SystemRDL description on its own.
+  - name: rdl-src
+    uses: std.FileSet
+    with:
+      type: systemRDLSource
+      include:
+      - fw_i2c_regs.rdl
+
+  - export: reg-model
+    uses: rdl.Export
+    needs: [rdl-src]
+    with:
+      format: fw-hdl
+      top: fw_i2c_regs
+      filename: fw_i2c_reg_pkg.sv
+      options:
+        package-name: fw_i2c_reg_pkg
+        type-style: lexical
+
+  - export: reg-model-pss
+    uses: rdl.Export
+    needs: [rdl-src]
+    with:
+      format: pss
+      top: fw_i2c_regs
+      filename: fw_i2c_regs_pkg.pss
+      options:
+        package-name: fw_i2c_regs_pkg
+        type-style: lexical
+        pad-tail: true

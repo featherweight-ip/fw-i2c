@@ -234,6 +234,12 @@ peakrdl-fw-hdl, which wants one access width per map.
 R1 is the only blocking gap. R1 and R3 are also the improvements other
 OpenCores-style IP would gain from (see {ref}`opportunities`).
 
+**Status:** R1, R2 and R3 are closed in the tooling ({doc}`bench-plan` T2,
+T3): `fw_reg_block` decodes reads and writes separately (`FW_REG_RO` /
+`FW_REG_WO`), and `singlepulse` is a `pulse_mask`. `hwclr` needed nothing
+new. `src/rdl/fw_i2c_regs.rdl` generates with no unsupported notes. R4 and
+R5 stay hand-coded in the design.
+
 ## 5. Behavioural alignment
 
 "Aligned with freecores" has to be defined precisely, because the

@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://dv-flow.github.io/flow.dv.schema.json
+#
+# The UVM bench (docs/design/bench-plan.md): one env and one set of common
+# tests (env/, tests/), and one image per view (tb/). An image is a pair of
+# tops from the project's view_tb/view_top maps; `images` picks the views
+# the universal matrix runs.
+fragment:
+  name: uvm
+  tasks:
+  # The env and tests packages, compiled once. The operation model's generated
+  # package and the protocol kits come first.
+  - name: uvm-env
+    uses: project.dv.uvm.utils.env-base
+    needs:
+    - pss.op-model-sv
+    - fw.proto.wb.files
+    - fw.proto.i2c.files
+    - "flags-comp-${{ build }}"
+
+  # Each view's design sources. `ref` is R76 behind the 32-bit shim.
+  - { name: view-src-ref, passthrough: all, consumes: none, needs: [ref-rtl] }
+
+  - root: sim-img
+    desc: Simulation image for one view
+    with:
+      view:
+        type: str
+        value: ref
+        cli: true
+        values: [ref]
+        doc: View to build
+    strategy:
+      select:
+        axes:
+          view: [ref]
+        default: {view: "${{ view }}"}
+      body:
+      - uses: project.dv.uvm.utils.tb-img
+        needs:
+        - uvm-env
+        - "view-src-${{ this.view }}"
+        - "flags-comp-${{ build }}"
+        - "flags-elab-${{ build }}"
+        with:
+          tb_include: "${{ view_tb[this.view] }}"
+          top:        "${{ view_top[this.view] }}"
+
+  # The common tests, on every view in `images`.
+  - name: uvm-universal
+    strategy:
+      matrix:
+        image: "${{ images }}"
+        case:
+        - { name: smoke, testname: fw_i2c_smoke_test, plusargs: [] }
+    body:
+    - name: "${{ this.image }}-${{ this.case.name }}"
+      uses: hdlsim.vlt.SimUVMCase
+      needs:
+      - "sim-img.${{ this.image }}"
+      - "flags-run-${{ build }}"
+      with:
+        name: "${{ this.image }}-${{ this.case.name }}"
+        testname: "${{ this.case.testname }}"
+        plusargs: "${{ this.case.plusargs }}"

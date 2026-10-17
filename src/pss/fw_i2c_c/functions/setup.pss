@@ -1,0 +1,29 @@
+// configure/shutdown: core setup (docs/reference/operation.md, "Enabling the core").
+import fw_i2c_regs_pkg::*;
+
+extend component fw_i2c_c {
+    export target function configure;
+    export target function shutdown;
+
+    // Program the prescaler, then enable the core (and its interrupt if ien).
+    // Call with the core disabled.
+    target function void configure(bit[16] prer, bit ien) {
+        fw_i2c_regs__PRERlo_s lo;
+        fw_i2c_regs__PRERhi_s hi;
+        fw_i2c_regs__CTR_s    ctr;
+        lo.PRER_LO = prer[7:0];
+        hi.PRER_HI = prer[15:8];
+        ctr.EN  = 1;
+        ctr.IEN = ien;
+        regs.PRERlo.write(lo);
+        regs.PRERhi.write(hi);
+        regs.CTR.write(ctr);
+    }
+
+    // Disable the core (and its interrupt). Call only after a transfer has
+    // ended with a STOP.
+    target function void shutdown() {
+        fw_i2c_regs__CTR_s ctr;
+        regs.CTR.write(ctr);
+    }
+}

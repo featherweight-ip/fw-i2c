@@ -20,6 +20,10 @@ No fw-hdl source yet. See {doc}`design/plan`.
 - {doc}`design/index` — the `fw-i2c` design: architecture, registers,
   verification, lowering and the size comparison. Includes open issues.
 - {doc}`design/plan` — step plan and status.
+- {doc}`design/bench-plan` — design and test bench plan: common tests, views, and the
+  equivalence check against R76.
+- {doc}`design/operation-model` — the PSS operation model: the operations tests
+  and the equivalence check drive, and what each returns.
 
 ```{toctree}
 :maxdepth: 2
@@ -36,4 +40,6 @@ reference/index
 
 design/index
 design/plan
+design/bench-plan
+design/operation-model
 ```

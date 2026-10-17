@@ -1,0 +1,25 @@
+// Register map of fw-i2c: the R76 map (oc_i2c_regs.rdl) on a 4-byte stride,
+// which is what the reference arm's 32-bit WISHBONE shim (src/ref/
+// oc_i2c_wb32.sv) presents. Registers are 32 bits wide with bits [7:0]
+// implemented; bits [31:8] read 0 and ignore writes. Writes need sel[0].
+// See docs/design/index.md section 4.
+//
+//   0x00 PRERlo   0x04 PRERhi   0x08 CTR
+//   0x0C TXR (write) / RXR (read)
+//   0x10 CR (write)  / SR (read)
+//   0x14 TXR_DBG  0x18 CR_DBG   0x1C reads 0
+
+addrmap fw_i2c_regs {
+    name = "fw-i2c";
+    desc = "Register map of fw-i2c: the OpenCores I2C-Master (R76) registers,
+one per 32-bit word, bits [7:0] implemented.";
+
+    default regwidth = 32;
+    default accesswidth = 32;
+    default sw = rw;
+    default hw = r;
+
+    `define OC_I2C_STRIDE 4
+    `include "oc_i2c_regs.rdl"
+    `undef OC_I2C_STRIDE
+};

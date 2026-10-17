@@ -1,0 +1,48 @@
+// The completion condition every byte operation shares: SR.IF. TIP cannot be
+// used (0 for STO-only commands, and it lags CR by a clock).
+import fw_i2c_regs_pkg::*;
+import fw_i2c_types_pkg::*;
+
+extend component fw_i2c_c {
+    export target function completion_check;
+    export target function completion_wait;
+    export target function read_status;
+
+    // One SR read, decoded. No side effects (R76 reads have none).
+    target function fw_i2c_check_s completion_check() {
+        fw_i2c_regs__SR_s sr;
+        fw_i2c_check_s    st;
+        sr = regs.SR.read();
+        st.sr.rxack    = sr.RXACK;
+        st.sr.busy     = sr.BUSY;
+        st.sr.al       = sr.AL;
+        st.sr.tip      = sr.TIP;
+        st.sr.irq_flag = sr.IF;
+        st.done        = sr.IF;
+        return st;
+    }
+
+    // Block until the operation in progress completes; return SR then.
+    target function fw_i2c_result_s completion_wait() {
+        fw_i2c_check_s  st;
+        fw_i2c_result_s res;
+        while (true) {
+            st = completion_check();
+            if (st.done == 1) {
+                break;
+            }
+            wait_related_event();
+        }
+        res.sr = st.sr;
+        return res;
+    }
+
+    // The status between operations: one SR read, no command.
+    target function fw_i2c_result_s read_status() {
+        fw_i2c_check_s  st;
+        fw_i2c_result_s res;
+        st = completion_check();
+        res.sr = st.sr;
+        return res;
+    }
+}

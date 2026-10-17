@@ -227,3 +227,6 @@ ci-reports/
 .claude/
 .codex/
 .cursor/
+node_modules
+# The UVM env directory is source, not a Python env
+!tests/uvm/env/

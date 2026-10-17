@@ -78,7 +78,11 @@ IF is cleared only by writing CR with IACK = 1 (EN must be 1). A command
 can be issued and IF acknowledged in the same CR write. `wb_inta_o` is
 `IF & IEN`, registered.
 
-`SR.BUSY` comes from the bus, not from this core's state. It is set by
+`SR.BUSY` comes from the bus, not from this core's state. It clears when
+the filtered STOP detector sees the STOP on the pins, which is after the
+STOP command's IF: a status read straight after the STOP completes can still
+show BUSY = 1 (the UVM smoke test sees it clear on the second read, at
+PRER = 4). It is set by
 any START and cleared by any STOP, so a bus that is left with no STOP
 (another master reset, a glitch) stays BUSY until reset.
 
