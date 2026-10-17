@@ -352,13 +352,37 @@ module: 26 flops and 57 LUT4 when synthesized with hierarchy kept
 | OI-3 | Register-compatible with freecores, or only behaviourally similar? | **Decided:** register-compatible with R76. |
 | OI-4 | Runtime bit rate in the kit | **Decided and implemented:** the `set_prescale()` runtime setting; see §3.3. Push and merge of the kit branch are still to do. |
 | OI-5 | Prescaler and input filter: written with fw-hdl, or hand SV? A counter is dataflow, not control. | fw-hdl if `synth-mmio` handles counters well, otherwise hand SV. Report it separately either way. |
-| OI-6 | Match or fix each quirk: STA alone, STA + STO, AL on an unexpected STOP (§3.3), the SCL period (D10), timing violations (D8). | See §5; decide after the confirmation tests (§6.3). |
+| OI-6 | Match or fix each quirk: STA alone, STA + STO, AL on an unexpected STOP (§3.3), the SCL period (D10), timing violations (D8). | The confirmation tests have run (bench-plan E3). **Proposed, for review:** see §8.1. |
 | OI-7 | Can `synth-mmio` lower this design? `fw-hdl/python/fw/hdl/PLAN.md` §5 lists non-goals for v1: multiple concurrent processes, sub-component hierarchy, derived clock domains, non-`put` protocols. The sequencer calls a transactor API (a non-`put` protocol) and sits in a hierarchy. | Spike first (plan step 3): the smallest sequencer that does `start`/`tx_byte`/`stop` through `synth-mmio`. |
 | OI-8 | Formal equivalence of model vs. lowered RTL for `synth-mmio` output | Check whether `CodegenEquiv` supports it. |
 | OI-9 | How to isolate the "transaction-level control" block in arm A for the headline comparison | Report the R76 byte controller (a separate module) synthesized with hierarchy kept. Also report full-IP totals. |
 | OI-10 | Reset style | **Decided:** synchronous `wb_rst_i` only, in both arms. Arm A's shim ties `arst_i` inactive (−37 LUT4 on iCE40). fw-i2c is lowered with a synchronous reset. |
 | OI-11 | Naming. NAMING.md says IP repos are `fw-ip-<proto>`. | **Decided:** `fw-i2c`. |
 | OI-12 | The `i2c/` clone at the repository root duplicated the ivpm-managed `packages/i2c`. | **Done** 2026-10-17: removed; everything refers to `packages/i2c`. |
+
+### 8.1 OI-6: proposed resolution (for review)
+
+With D1 and D6–D10 now confirmed by simulation ({doc}`../reference/deviations`),
+this is the proposal. None of it is decided yet. Each "fix" or "differs"
+becomes a named rule in the bench's allowed-differences table
+(`tests/uvm/env/i2c_allowed_diffs.svh`) when the fw-i2c views arrive, and a
+test that targets the defect expects the rule to apply.
+
+| Item | Evidence | Proposal | Bench rule |
+|---|---|---|---|
+| D1 repeated command | 2 of 17 swept writes repeated the byte | **Fix** (already in §5) | `d1`, expected by a cr-race test on the `-eq` views |
+| D6 EN cleared mid-command | SCL at 90 ns, a STOP condition, AL | **Fix**: EN = 0 stops the sequencer at the next bit boundary and releases the lines | `d6` |
+| D7 PRER < 2 | AL against a single target at PRER 0 and 1 | **Fix**: correct at every PRER the kit can run | `d7` |
+| D8 tSU;STA (Sm), tVD;DAT (Sm, Fm) | 3.0 µs < 4.7; 4.0 µs > 3.45; 1.0 µs > 0.9 | **Fix**: meet UM10204 at the nominal PRER. Timing only: no op or bus-event difference, so no rule | none |
+| D10 SCL 10% slow | × 1.10 in both modes | **Differ**: follow the PDF formula, 5 (PRER+1) clocks, so the programmed rate is the real one. Timing only | none |
+| D9 STOP collision not detected | R76 completes a STOP that never reached the bus, AL = 0 | **Match** in the first pass (single-master use cannot see it); revisit with the shared-bus bench (E12) and the kit's own STOP checking | `d9_stop` (E12 only) |
+| AL on an unexpected STOP (§3.3) | not exercised by E3 | **Report-only** unless the kit gains an abort; then match | `al_unexp_stop` |
+| STA alone, STA + STO | not exercised by E3 | **Match** where the kit can express it (STA + STO is START, a byte, STOP); STA + RD stays a rule | `sta_rd` |
+
+Fixing D8 and D10 changes no operation result and no bus event, so the
+equivalence views need no rule for them. The timing report shows the
+difference, and the timing tests run on the fw-i2c views against
+UM10204 instead of against R76.
 
 (opportunities)=
 ## 9. Opportunities
@@ -402,4 +426,5 @@ module: 26 flops and 57 LUT4 when synthesized with hierarchy kept
 
 1. Review and push the `runtime-prescale` branches of `fw-proto-i2c`
    and `fwvip-i2c` (§3.3).
-2. OI-6 can wait until the reference confirmation tests have run.
+2. OI-6: the reference confirmation tests have run; review the proposal
+   in §8.1.

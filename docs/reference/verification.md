@@ -56,17 +56,22 @@ scoreboards, one standing in for the design under test.
 | `ref-eq-<case>-x2` (all 9) | **passing** | R76 at PRER' = 2(PRER+1) − 1: still no difference; the timing report shows R76/DUT 1.8–2.4 |
 | `ref-eq-sabotage` | **passing** | The mirror inverts R76's ACK of one data byte; both scoreboards report it (the test expects exactly that) |
 
-## Planned confirmation tests (fw-i2c bench)
+## Reference confirmation tests
 
-The `fw-i2c` back-to-back bench (see {doc}`../design/index`) runs this
-core as a DUT next to `fwvip-i2c` agents and checks the statements marked
-**(to confirm)** and the defects in {doc}`deviations`. One directed test
-per defect:
+{doc}`../design/bench-plan` E3: one directed test per suspected defect, on
+the `ref` view only (`uvm-ref-only` in `tests/uvm/flow.yaml`). The `ref`
+top publishes a probe (`i2c_ref_probe`): R76's `done`, accepted WISHBONE
+writes and AL each clock, the bus line timing (`i2c_line_timing`, against
+UM10204 Table 10), and a second master on the bus (the kit's controller
+transactor, idle unless a test drives it). Each test asserts the behaviour
+recorded in {doc}`deviations`, so it fails if R76 does anything else.
 
-| Test | Confirms | Method |
-|---|---|---|
-| `ref_cr_race` | D1 | Write TXR in the clock where `done` pulses (use a hierarchical probe to time it); count bytes on the bus with the monitor. |
-| `ref_en_midbyte` | D6 | Clear EN in the middle of a byte; measure bit timing. |
-| `ref_prer0` | D7 | PRER = 0, one byte write; count bits and STOPs. (PRER = 1 is already shown failing by `ref-smoke +PRER=1`.) |
-| `ref_timing` | D8, D10 | Monitor-measured tSU;STA, tVD;DAT and SCL period at nominal Sm/Fm PRER. |
-| `ref_arb` | D9 | Two controllers (core + VIP) with identical then diverging address bytes, and a START collision. |
+| Case | Confirms | Method | Status |
+|---|---|---|---|
+| `ref-cr-race` | D1 | TXR writes swept across the end of a byte; the probe says which landed in the `done` clock; count bytes on the bus | **passing** |
+| `ref-en-midbyte` | D6 | Clear EN after the third SCL rise of a byte at PRER 24; measure SCL; read SR | **passing** |
+| `ref-prer1`, `ref-prer0` | D7 | One write with STOP at PRER 1 and 0, each command polled; SR, bus events, `done` pulses | **passing** |
+| `ref-timing-sm`, `ref-timing-fm` | D8, D10 | Line timing over a write and a repeated-START read at PRER 199 and 49 | **passing** |
+| `ref-arb` | D9 | R76 and the kit controller start together with the same address, then diverge either way, then R76's STOP against the other master's 0 bit | **passing** |
+
+The results are in the status column of {doc}`deviations`.

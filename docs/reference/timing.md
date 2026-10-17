@@ -38,20 +38,24 @@ L ≈ t_rise + (3 + 2·(floor(PRER/4)+1))·T(clk)        (≈ PRER/2 + 5 clocks)
 ```
 
 For large PRER this makes SCL about 10% slower than nominal, for example
-about 91 kHz when programmed for 100 kHz **(to confirm)**. Software that
+about 91 kHz when programmed for 100 kHz. Confirmed by simulation (D10):
+90.9 kHz at PRER 199 and about 364 kHz at PRER 49, with a 100 MHz clock and
+no rise time. Software that
 needs a true 100 kHz or 400 kHz must program a smaller PRER.
 
 ### Minimum PRER
 
 PRER must be at least 2:
 
-- **PRER = 0:** the bit FSM's idle tick falls on the clock straight after
-  `cmd_ack`, before the byte controller has changed the command, so the
-  previous bit command runs again.
 - **PRER = 1:** a tick is 2 clocks, which is shorter than the input sync
   and filter latency. The arbitration check sees SDA from the previous
-  bit, and the core reports arbitration lost against a single slave.
-  This is confirmed in simulation.
+  bit, and the core reports arbitration lost against a single slave on the
+  first address byte. Confirmed in simulation.
+- **PRER = 0:** the same, on every command: each ends in arbitration lost
+  and no byte reaches the bus (confirmed in simulation). Reading the RTL
+  alone suggested that the bit FSM's idle tick, which falls on the clock
+  straight after `cmd_ack`, would run the previous bit command again; on a
+  bus with a target the arbitration loss comes first.
 
 See D7 in {doc}`deviations`.
 
@@ -139,9 +143,25 @@ PRER for 100 kHz and 400 kHz (one tick is 2 µs and 0.5 µs) and ignore
 | tSU;DAT | 1 | 2 µs | ≥ 250 ns | 0.5 µs | ≥ 100 ns |
 | tVD;DAT (SCL low to data valid) | 2 | 4 µs | **≤ 3.45 µs** | 1 µs | **≤ 0.9 µs** |
 
-The two bold entries suggest that the core, used at the nominal setting,
-violates Standard-mode repeated-START setup time and the data-valid time
-in both modes **(to confirm)**. Neither matters to a typical slave (data
+Measured by the bench (`ref-timing-sm`, `ref-timing-fm`: 100 MHz clock,
+PRER 199 and 49, ideal lines with no rise time), as min–max over one
+transfer with every bus condition:
+
+| Parameter | Sm measured | Fm measured |
+|---|---|---|
+| SCL period | 11.0 µs | 2.69–2.75 µs |
+| tLOW | 6.0 µs | 1.5 µs |
+| tHIGH | 5.0 µs | 1.19–1.25 µs |
+| tHD;STA | 4.0 µs | 1.0 µs |
+| tSU;STA (repeated START) | **3.0 µs** | 0.73 µs |
+| tSU;STO | 5.0 µs | 1.23 µs |
+| tBUF | 8.0–8.15 µs | 2.0–2.15 µs |
+| tSU;DAT (min) | 2.0 µs | 0.5 µs |
+| tVD;DAT (the core's own SDA) | **4.0 µs** | **1.0 µs** |
+
+The two bold entries of the first table are confirmed (D8): used at the
+nominal setting, the core violates Standard-mode repeated-START setup time
+and the data-valid time in both modes. Sm tHD;STA is exactly at its minimum. Neither matters to a typical slave (data
 still meets setup before SCL rises), but a protocol-checking monitor will
 flag them. They are also the values `fw-i2c` must decide whether to match
 or fix; see {doc}`../design/index`.

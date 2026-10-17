@@ -64,7 +64,7 @@ package:
       waivers: lint-waivers.yaml
 
   - override: tests
-    needs: [uvm.uvm-universal, uvm.uvm-eq-selftest]
+    needs: [uvm.uvm-universal, uvm.uvm-eq-selftest, uvm.uvm-ref-only]
 
   - override: smoke
     needs: [uvm.uvm-universal]

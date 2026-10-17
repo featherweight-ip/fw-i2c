@@ -4,6 +4,9 @@
 // transactor. Instanced by hdl_top_ref and, later, by every equivalence top
 // beside the design under test (bench-plan §4.3). i2c_ref_model drives it
 // through u_wb.u_if, u_tgt.u_if and u_mon.u_if, and watches `inta`.
+//
+// The bus also has a second master, a controller transactor (u_ctl), idle
+// unless a test drives it: the arbitration confirmation test (D9, E3).
 module oc_i2c_ref_arm (
         input  wire clock,
         input  wire reset,
@@ -25,8 +28,11 @@ module oc_i2c_ref_arm (
     // enable is 0; the target transactor when its _oe is 1.
     wire core_scl_o, core_scl_oen, core_sda_o, core_sda_oen;
     wire tgt_scl_o, tgt_scl_oe, tgt_sda_o, tgt_sda_oe;
-    assign scl = !((!core_scl_oen && !core_scl_o) || (tgt_scl_oe && !tgt_scl_o));
-    assign sda = !((!core_sda_oen && !core_sda_o) || (tgt_sda_oe && !tgt_sda_o));
+    wire ctl_scl_o, ctl_scl_oe, ctl_sda_o, ctl_sda_oe;
+    assign scl = !((!core_scl_oen && !core_scl_o) || (tgt_scl_oe && !tgt_scl_o) ||
+                   (ctl_scl_oe && !ctl_scl_o));
+    assign sda = !((!core_sda_oen && !core_sda_o) || (tgt_sda_oe && !tgt_sda_o) ||
+                   (ctl_sda_oe && !ctl_sda_o));
 
     oc_i2c_wb32 u_dut (
         .wb_clk_i(clock), .wb_rst_i(reset),
@@ -40,6 +46,11 @@ module oc_i2c_ref_arm (
         .clock(clock), .reset(reset),
         .scl_o(tgt_scl_o), .scl_oe(tgt_scl_oe), .scl_i(scl),
         .sda_o(tgt_sda_o), .sda_oe(tgt_sda_oe), .sda_i(sda));
+
+    i2c_controller_xtor u_ctl (
+        .clock(clock), .reset(reset),
+        .scl_o(ctl_scl_o), .scl_oe(ctl_scl_oe), .scl_i(scl),
+        .sda_o(ctl_sda_o), .sda_oe(ctl_sda_oe), .sda_i(sda));
 
     i2c_monitor_xtor u_mon (
         .clock(clock), .reset(reset),

@@ -100,3 +100,27 @@ fragment:
         name: "ref-eq-${{ this.case.name }}"
         testname: "${{ this.case.testname }}"
         plusargs: "${{ this.case.plusargs }}"
+
+  # The reference confirmation tests (bench-plan E3): R76 alone, with the
+  # probe the `ref` top publishes. Results: docs/reference/deviations.md.
+  - name: uvm-ref-only
+    strategy:
+      matrix:
+        case:
+        - { name: timing-sm, testname: fw_i2c_ref_timing_test,     plusargs: [I2C_MODE=sm] }
+        - { name: timing-fm, testname: fw_i2c_ref_timing_test,     plusargs: [I2C_MODE=fm] }
+        - { name: cr-race,   testname: fw_i2c_ref_cr_race_test,    plusargs: [] }
+        - { name: en-midbyte, testname: fw_i2c_ref_en_midbyte_test, plusargs: [] }
+        - { name: prer1,     testname: fw_i2c_ref_prer_min_test,   plusargs: [PRER=1] }
+        - { name: prer0,     testname: fw_i2c_ref_prer_min_test,   plusargs: [PRER=0] }
+        - { name: arb,       testname: fw_i2c_ref_arb_test,        plusargs: [] }
+    body:
+    - name: "ref-${{ this.case.name }}"
+      uses: hdlsim.vlt.SimUVMCase
+      needs:
+      - "sim-img.ref"
+      - "flags-run-${{ build }}"
+      with:
+        name: "ref-${{ this.case.name }}"
+        testname: "${{ this.case.testname }}"
+        plusargs: "${{ this.case.plusargs }}"
