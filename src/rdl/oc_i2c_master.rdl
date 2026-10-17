@@ -1,6 +1,6 @@
-// Register map of the freecores 'i2c' core (OpenCores I2C-Master,
-// R. Herveille, with the 2013 slave-mode extension by H. Baier), as
-// implemented by rtl/verilog/i2c_master_top.v at freecores/i2c 3b067f0.
+// Register map of the OpenCores I2C-Master core (R. Herveille) as
+// implemented by rtl/verilog/i2c_master_top.v at freecores/i2c dba90b2
+// ("R76": OpenCores SVN rev 76, the last master-only RTL).
 //
 // This describes the RTL as built, not the 2003 PDF specification. Where
 // the two differ, the description says so; see docs/reference/deviations.md.
@@ -10,9 +10,9 @@
 // CR) and a read returns another (RXR, SR).
 
 addrmap oc_i2c_master {
-    name = "freecores i2c core";
-    desc = "Register map of the freecores i2c core (OpenCores I2C-Master with
-            the slave-mode extension), as implemented at freecores/i2c 3b067f0.";
+    name = "OpenCores I2C-Master (R76)";
+    desc = "Register map of the OpenCores I2C-Master core as implemented at
+            freecores/i2c dba90b2 (OpenCores SVN rev 76).";
 
     default regwidth = 8;
     default accesswidth = 8;
@@ -38,7 +38,7 @@ says. The real SCL is somewhat slower: the divider pauses after every SCL
 release until the filtered SCL input reads high (see the timing page).
 PRER[15:2] also sets the input glitch-filter sample rate.
 
-PRER must be at least 1. Change PRER only while CTR.EN is 0; writes are not
+PRER must be at least 2 (see D7). Change PRER only while CTR.EN is 0; writes are not
 blocked when EN is 1.";
         field {
             desc = "Prescale value bits [15:8].";
@@ -61,23 +61,16 @@ leave the I2C bus hung.";
 SR.IF still sets and can be polled.";
         } IEN[6:6] = 0;
         field {
-            name = "Slave enable";
-            desc = "Slave-mode extension. 1: the core responds as a slave when
-the 7-bit address sent after a START matches SLADR. The PDF specification
-lists this bit as reserved.";
-        } SLV_EN[5:5] = 0;
-        field {
             name = "Reserved";
             desc = "Stored and read back; no function.";
-        } RSVD[4:0] = 0;
+        } RSVD[5:0] = 0;
     } CTR @ 0x2;
 
     reg {
         name = "Transmit (TXR)";
         desc = "Next byte to transmit. For a slave address byte, bit 0 is the
-R/W bit (1 = read from slave). In slave mode, writing CR.SL_CONT loads TXR
-into the shift register, so TXR holds the byte to send to a master that is
-reading. TXR can be read back at 0x5 (TXR_DBG).";
+R/W bit (1 = read from slave). TXR is loaded into the shift register when
+a command starts. It can be read back at 0x5 (TXR_DBG).";
         field {
             sw = w;
             desc = "Byte to transmit.";
@@ -88,9 +81,7 @@ reading. TXR can be read back at 0x5 (TXR_DBG).";
         name = "Receive (RXR)";
         desc = "The byte-controller shift register. After a read command it
 holds the last byte received. It is the same register that shifts TXR out,
-so its contents change during every transfer, not only reads. In slave mode
-it is overwritten by the received address byte, and writing CR.SL_CONT
-overwrites it with TXR, so read RXR before writing SL_CONT.";
+so its contents change during every transfer, not only reads.";
         field {
             sw = r; hw = w;
             desc = "Shift register contents.";
@@ -101,8 +92,9 @@ overwrites it with TXR, so read RXR before writing SL_CONT.";
         name = "Command (CR)";
         desc = "Commands to the byte controller. CR is written only while
 CTR.EN is 1. STA, STO, RD and WR stay set until the command completes or
-arbitration is lost, then clear together. IACK and SL_CONT clear on the
-next clock. ACK is not cleared. CR can be read back at 0x6 (CR_DBG).
+arbitration is lost, then clear together. IACK and the reserved bits 2:1
+clear on the next clock. ACK is not cleared. CR can be read back at 0x6
+(CR_DBG).
 
 A transfer starts only when RD, WR or STO is set: STA alone does nothing.
 STA with RD or WR sends a (repeated) START, then the byte. RD or WR with
@@ -133,26 +125,23 @@ WR are clear.";
             sw = w;
             name = "Acknowledge";
             desc = "Acknowledge to send after a byte the master reads:
-0 = ACK, 1 = NACK. Ignored in slave mode, where the core always ACKs.
-This bit holds its value until the next CR write.";
+0 = ACK, 1 = NACK. This bit holds its value until the next CR write.";
         } ACK[3:3] = 0;
         field {
             sw = w; singlepulse;
             name = "Reserved";
             desc = "Cleared on the next clock.";
-        } RSVD[2:2] = 0;
+        } RSVD2[2:2] = 0;
         field {
             sw = w; singlepulse;
-            name = "Slave continue";
-            desc = "Slave-mode extension. Releases SCL after a slave byte and
-loads TXR into the shift register. The PDF specification lists this bit
-as reserved.";
-        } SL_CONT[1:1] = 0;
+            name = "Reserved";
+            desc = "Cleared on the next clock.";
+        } RSVD1[1:1] = 0;
         field {
             sw = w; singlepulse;
             name = "Interrupt acknowledge";
-            desc = "Clears SR.IF. A level source (SR.SLV_DAT_REQ or
-SR.SLV_DAT_AVAIL) still set sets IF again on the next clock.";
+            desc = "Clears SR.IF. IACK wins over a completion in the same
+clock.";
         } IACK[0:0] = 0;
     } CR @ 0x4;
 
@@ -161,8 +150,9 @@ SR.SLV_DAT_AVAIL) still set sets IF again on the next clock.";
         field {
             sw = r; hw = w;
             name = "Received acknowledge";
-            desc = "Acknowledge bit seen in the last ACK slot: 0 = ACK,
-1 = NACK. In slave-transmit mode it is the master's acknowledge.";
+            desc = "The bit sampled in the last ACK slot: 0 = ACK, 1 = NACK.
+After a write it is the slave's acknowledge. After a read it is the
+acknowledge bit the core itself sent (CR.ACK).";
         } RXACK[7:7] = 0;
         field {
             sw = r; hw = w;
@@ -182,27 +172,10 @@ arbitration clears the command bits, returns the byte controller to idle
 and sets IF. AL stays set until a CR write with STA set.";
         } AL[5:5] = 0;
         field {
-            sw = r; hw = w;
-            name = "Slave mode";
-            desc = "Slave-mode extension; reserved (0) in the PDF
-specification. Meant to show that the core was addressed as a slave. It is
-updated only when a master command completes, when the slave-active flag is
-always 0, so in practice it reads 0. To be confirmed by simulation.";
-        } SLV_MODE[4:4] = 0;
-        field {
-            sw = r; hw = w;
-            name = "Slave data available";
-            desc = "Slave-mode extension. A master wrote a byte to this core
-(or addressed it for writing). The byte is in RXR and SCL is held low. Stays
-set, and keeps SR.IF set, until CR.SL_CONT is written.";
-        } SLV_DAT_AVAIL[3:3] = 0;
-        field {
-            sw = r; hw = w;
-            name = "Slave data request";
-            desc = "Slave-mode extension. A master is reading from this core
-and SCL is held low. Write the next byte to TXR, then write CR.SL_CONT. Stays
-set, and keeps SR.IF set, until SL_CONT.";
-        } SLV_DAT_REQ[2:2] = 0;
+            sw = r; hw = na;
+            name = "Reserved";
+            desc = "Reads 0.";
+        } RSVD[4:2] = 0;
         field {
             sw = r; hw = w;
             name = "Transfer in progress";
@@ -212,9 +185,8 @@ one clock. Not set by a STA-only or STO-only command.";
         field {
             sw = r; hw = w;
             name = "Interrupt flag";
-            desc = "Set when a master command completes, arbitration is lost,
-a slave byte completes, or SLV_DAT_REQ/SLV_DAT_AVAIL is set. Cleared by
-CR.IACK. Drives wb_inta_o when CTR.IEN is 1.";
+            desc = "Set when a command completes or arbitration is lost.
+Cleared by CR.IACK. Drives wb_inta_o when CTR.IEN is 1.";
         } IF[0:0] = 0;
     } SR @ 0x4;
 
@@ -240,17 +212,11 @@ ignored.";
     } CR_DBG @ 0x6;
 
     reg {
-        name = "Slave address (SLADR)";
-        desc = "Slave-mode extension; reserved (reads 0) in the original core.
-The 7-bit address this core answers to when CTR.SLV_EN is 1. The reset value
-comes from the DEFAULT_SLAVE_ADDR parameter (default 7'h7E). Only 7-bit
-addresses are supported; the general-call address is not recognized.";
-        field {
-            name = "Slave address";
-        } ADDR[6:0] = 7'h7E;
+        name = "Reserved (0x7)";
+        desc = "Reads 0; writes are ignored.";
         field {
             sw = r; hw = na;
             desc = "Reads 0.";
-        } RSVD[7:7] = 0;
-    } SLADR @ 0x7;
+        } RSVD[7:0] = 0;
+    } RSVD7 @ 0x7;
 };

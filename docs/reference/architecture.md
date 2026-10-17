@@ -5,10 +5,10 @@ clocked by `wb_clk_i`.
 
 | Module | Lines | Contents |
 |---|---|---|
-| `i2c_master_top` | 327 | WISHBONE slave, PRER/CTR/TXR/CR/SLADR registers, SR assembly, IRQ |
-| `i2c_master_byte_ctrl` | 503 | Byte FSM, 8-bit shift register (TXR load / RXR), 3-bit bit counter |
-| `i2c_master_bit_ctrl` | 726 | Prescaler, synchronizer and filter, START/STOP detection, busy, arbitration, master bit FSM, slave bit FSM, slave address shifter |
-| `i2c_master_defines` | 63 | Bit-command and slave-command encodings |
+| `i2c_master_top` | 300 | WISHBONE slave, PRER/CTR/TXR/CR registers, SR assembly, IRQ |
+| `i2c_master_byte_ctrl` | 344 | Byte FSM, 8-bit shift register (TXR load / RXR), 3-bit bit counter |
+| `i2c_master_bit_ctrl` | 576 | Prescaler, synchronizer and filter, START/STOP detection, busy, arbitration, bit FSM |
+| `i2c_master_defines` | 59 | Bit-command encodings |
 
 ## Top level
 
@@ -19,18 +19,16 @@ The WISHBONE logic is described in {doc}`interface` and the registers in
 al       <= i2c_al | (al & ~sta);
 rxack    <= irxack;
 tip      <= rd | wr;
-irq_flag <= (done | slave_done | i2c_al | slave_dat_req |
-             slave_dat_avail | irq_flag) & ~iack;
-if (done) slave_mode <= slave_act;
+irq_flag <= (done | i2c_al | irq_flag) & ~iack;
 wb_inta_o <= irq_flag && ien;
 ```
 
 ## Byte controller
 
 The byte controller turns one CR command into a sequence of bit commands
-(`START`, `WRITE`, `READ`, `STOP`, one-hot 4 bits) and runs the slave
-byte sequence. Its 10-bit one-hot state register has 11 states (`IDLE`
-is all-zeros).
+(`START`, `WRITE`, `READ`, `STOP`, one-hot 4 bits). Its state register is
+5 bits wide and one-hot, with `IDLE` all-zeros: six states. It is reset by
+`wb_rst_i` and by arbitration loss.
 
 ```{mermaid}
 stateDiagram-v2
@@ -48,36 +46,26 @@ stateDiagram-v2
   ACK --> STOP: STO
   ACK --> IDLE: no STO / done
   STOP --> IDLE: done
-  IDLE --> SL_ACK: slave addressed
-  note left of IDLE: any state → IDLE on\nreset, AL, START/STOP
+  note left of IDLE: any state → IDLE on\nreset or AL
 ```
-
-The slave states (`SL_ACK`, `SL_WAIT`, `SL_PRELOAD`, `SL_RD`, `SL_WR`) are
-shown in {doc}`slave-mode`.
 
 - **Shift register and RXR.** The shift register is loaded from TXR when a
   command starts (`ld`) and shifts left on each bit, taking in the
   received bit. It is RXR. After a write it holds the bits sampled from
   SDA during the write, which equal TXR unless arbitration was lost.
 - **Bit counter.** `dcnt` loads 7 and counts down once per bit.
+- **ACK slot.** After a write the ACK slot is a READ bit command; after a
+  read it is a WRITE of `CR.ACK`. Either way `ack_out` (SR.RXACK) takes
+  the bit seen on SDA.
 
 ## Bit controller
 
-### Master bit FSM
+### Bit FSM
 
 The 18-bit state register holds 17 one-hot states plus all-zeros for
 `idle`. Bit 17 is never set (the `wr_d` literal is 17 bits wide), so one
-flop is dead. Each state lasts one tick. The per-state outputs and the
-sequences are in {doc}`timing`.
-
-### Slave bit FSM
-
-A 5-bit, binary-encoded FSM with 7 states. It transmits a bit when SCL is
-low, receives on the SCL rising edge, and reports each bit back to the
-byte controller (`cmd_slave_ack`). The slave drives SCL low (stretches)
-only while the byte controller asserts `sl_wait`, in `SL_WAIT`. The
-output mux selects the master or slave enables using `master_mode`, which
-the byte controller sets on a master START.
+flop is dead and is removed by synthesis. Each state lasts one tick. The
+per-state outputs and the sequences are in {doc}`timing`.
 
 ### Shared logic
 
@@ -87,16 +75,19 @@ the byte controller sets on a master START.
 - `busy <= (sta | busy) & ~sto`
 - `al <= (sda_chk & ~sSDA & sda_oen) | (|c_state & sto & ~cmd_stop)`
 
-## State and flop counts
+## Size by module
 
-From the RTL (before synthesis optimizations):
+Yosys 0.69, `synth_ice40 -device u -noflatten` (hierarchy kept, so the
+total is a little above the flattened 322 LUT4 in {doc}`synthesis`):
 
-| Block | Flops (approx.) | Notes |
-|---|---|---|
-| Top | 16 PRER + 8 CTR + 8 TXR + 8 CR + 7 SLADR + 8 `wb_dat_o` + ~6 status/ack | CR bits 2, 1, 0 are single-pulse |
-| Byte controller | 10 state + 8 shift + 3 count + ~14 control/slave | |
-| Bit controller | 18 state + 16 cnt + 14 filter cnt + 2×(2+3+1+1) line + 5 slave state + 8 slave addr + 4 slave cnt + ~15 control | |
+| Module | Flops | SB_LUT4 | SB_CARRY |
+|---|---|---|---|
+| `i2c_master_top` | 54 | 90 | 0 |
+| `i2c_master_byte_ctrl` | 26 | 57 | 1 |
+| `i2c_master_bit_ctrl` | 74 | 191 | 26 |
+| Total | 154 | 338 | 27 |
 
-The prescaler, filter counter and PRER (46 flops) are the largest single
-item. They are fixed costs for any implementation with a runtime
-programmable rate.
+The byte controller, the block that does transaction-level control, is
+about a sixth of the core. Most of the area is the bit controller, which
+holds the 16-bit prescaler, the 14-bit filter counter and the bit FSM, and
+the top level, which holds the registers and the read mux.

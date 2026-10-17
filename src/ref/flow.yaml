@@ -1,0 +1,28 @@
+# Reference implementation (arm A): the OpenCores i2c core, R76 with the
+# fw-r76 patch set, from featherweight-ip/oc-i2c (packages/oc-i2c), and the
+# 32-bit WISHBONE shim that gives it the fw-XXX bus convention.
+fragment:
+  tasks:
+  - name: oc-i2c-rtl
+    uses: std.FileSet
+    with:
+      type: verilogSource
+      base: "${{ env.IVPM_PACKAGES }}/oc-i2c/rtl/verilog"
+      include:
+      - i2c_master_bit_ctrl.v
+      - i2c_master_byte_ctrl.v
+      - i2c_master_top.v
+      incdirs:
+      - .
+
+  - name: oc-i2c-wb32
+    uses: std.FileSet
+    needs: [oc-i2c-rtl]
+    with:
+      type: systemVerilogSource
+      include:
+      - oc_i2c_wb32.sv
+
+  - export: ref-rtl
+    uses: std.FileSet
+    needs: [oc-i2c-wb32]

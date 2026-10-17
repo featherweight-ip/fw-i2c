@@ -1,8 +1,8 @@
 # Programming
 
 The C header `software/include/oc_i2c_master.h` in the core's repository
-defines the register offsets and the master bits. It has no definitions
-for the slave-mode bits, SLADR or the debug registers, and its
+defines the register offsets and the control, command and status bits.
+It has no definitions for the debug registers at 0x5 and 0x6, and its
 `OC_BITCLEAR` macro is wrong: `(reg)|(~(bitmask))` should be
 `(reg)&(~(bitmask))`.
 

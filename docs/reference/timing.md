@@ -43,10 +43,17 @@ needs a true 100 kHz or 400 kHz must program a smaller PRER.
 
 ### Minimum PRER
 
-PRER must be at least 1. With PRER = 0, the bit FSM's idle tick falls on
-the clock straight after `cmd_ack`, before the byte controller has
-changed the command, so the previous bit command runs again **(to
-confirm)**.
+PRER must be at least 2:
+
+- **PRER = 0:** the bit FSM's idle tick falls on the clock straight after
+  `cmd_ack`, before the byte controller has changed the command, so the
+  previous bit command runs again.
+- **PRER = 1:** a tick is 2 clocks, which is shorter than the input sync
+  and filter latency. The arbitration check sees SDA from the previous
+  bit, and the core reports arbitration lost against a single slave.
+  This is confirmed in simulation.
+
+See D7 in {doc}`deviations`.
 
 ## Input filter
 

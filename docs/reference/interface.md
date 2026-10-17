@@ -6,13 +6,9 @@ Top-level module: `i2c_master_top`.
 
 | Parameter | Width | Default | Description |
 |---|---|---|---|
-| `ARST_LVL` | 1 | `1'b1` | Active level of `arst_i`. The PDF and rev 76 default to `1'b0` (active low). The default changed with the slave extension (commit `4ed851d`, 2013); freecores commit `132f42a` later fixed the testbench to match. Integrations written for the PDF that do not set this parameter will hold the core in reset. |
-| `DEFAULT_SLAVE_ADDR` | 7 | `7'h7E` | Reset value of SLADR. Slave extension only. |
+| `ARST_LVL` | 1 | `1'b0` | Active level of `arst_i`: with the default, `arst_i` is active low. (Later freecores commits change the default to `1'b1`; see {doc}`later-extension`.) |
 
-`7'h7E` is inside the I2C reserved range `1111_1xx` (10-bit addressing
-and device ID). As a result, an enabled slave with the reset address does
-not collide with a real 7-bit device, but it also does not respond until
-SLADR is programmed.
+That is the only parameter.
 
 ## Ports
 
@@ -86,8 +82,7 @@ Notes:
 
 - `wb_dat_o` is updated on every clock from `wb_adr_i`, whether or not a
   cycle is active.
-- `wb_ack_o` has no reset. In simulation it is X until the first clock
-  edge after `wb_cyc_i` and `wb_stb_i` are known **(to confirm)**.
+- `wb_ack_o` has no reset (see below).
 - An access does not wait for anything. A CR write while a command is in
   progress overwrites the command.
 
@@ -98,7 +93,11 @@ Notes:
   then filtered.
 - `arst_i` (asynchronously) and `wb_rst_i` (synchronously) reset all
   registers except these: `wb_ack_o`, `wb_dat_o`, and in the bit
-  controller `dscl_oen` and `dout`. The slave-address shift register is
-  also not reset by `wb_rst_i`; only `arst_i` resets it.
+  controller `dscl_oen` and `dout`. In a 4-state simulation, `wb_ack_o`
+  stays X if `wb_cyc_i & wb_stb_i` is high at the first clock edge.
+- Each RTL file includes `timescale.v` (`1ns/10ps`, inside
+  `synopsys translate_off`), and most non-blocking assignments carry a
+  `#1` delay. Verilator needs `--no-timing` (or `--timing`) to accept
+  them, and `-I rtl/verilog` for the includes.
 - Clearing `CTR.EN` does not reset the bit controller or stop it
   tracking the bus. See {doc}`deviations`.

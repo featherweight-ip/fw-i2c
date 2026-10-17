@@ -8,13 +8,21 @@ under {ref}`open-issues`. Nothing here has been implemented yet.
 
 ```{admonition} Decisions (2026-10-17)
 :class: tip
-- **Scope:** master-only first; size baseline R76 (`dba90b2`). (OI-1, OI-2)
+- **Scope:** master-only. The reference **and** size baseline is one revision of the core: R76 (`dba90b2`). (OI-1, OI-2)
 - **Compatibility:** register-compatible with R76. (OI-3)
 - **Target:** iCE40UP5K on the iCEBreaker board (12 MHz clock). (§7)
 - **Repository name:** `fw-i2c`. (OI-11)
 - **Runtime bit rate:** a runtime prescale setting in `fw-proto-i2c`, set by
   a method (`set_prescale()`), not a parameter on each call. (OI-4;
   implemented, see §3.3)
+- **WISHBONE:** every fw-XXX IP with a WISHBONE interface uses a 32-bit
+  bus with one register per 32-bit word, even when only the low byte is
+  valid. Writes take effect only when `sel[0]` is set. Arm A gets this
+  through a shim. (§3.4)
+- **Reset:** synchronous `wb_rst_i` only; the core's `arst_i` is tied
+  inactive. (OI-10)
+- **Reference source:** `featherweight-ip/oc-i2c`, tag `r76` plus the
+  `fw-r76` patch set, which changes no behaviour or area. (§3.4)
 ```
 
 ## 1. Goal
@@ -30,8 +38,8 @@ Build an I2C controller with fw-hdl that:
    with it for area (and timing)
 
 This is the "arm B vs. arm A" control-synthesis benchmark proposed in
-`control-synthesis-benchmark.md` (repository root). Arm A is the freecores
-core (hand-written RTL). Arm B is `fw-i2c`: a transaction-level control
+`control-synthesis-benchmark.md` (repository root). Arm A is the R76
+OpenCores core (hand-written RTL) behind a 32-bit WISHBONE shim. Arm B is `fw-i2c`: a transaction-level control
 block written with fw-hdl, over a library I2C transactor
 (`fw-proto-i2c`).
 
@@ -40,7 +48,7 @@ block written with fw-hdl, over a library I2C transactor
 | Input | What it gives this project |
 |---|---|
 | `i2c_specs.md` | The specification `fw-i2c` aligns with: a text conversion of the OpenCores I2C-Master PDF (Rev 0.9, 2003). It is out of date relative to the RTL in several places, so {doc}`../reference/index` restates it from the RTL; differences are in {doc}`../reference/deviations`. |
-| `packages/i2c` (freecores, fetched by ivpm) | Arm A: the RTL that `i2c_specs.md` describes, plus the later slave extension. |
+| `packages/oc-i2c` (`featherweight-ip/oc-i2c`, fetched by ivpm) | Arm A: the R76 RTL that `i2c_specs.md` describes, with a patch set that changes no behaviour ({doc}`../reference/integration`). |
 | `control-synthesis-benchmark.md` | The benchmark's goals, scope boundary, arms and metrics. |
 | `featherweight-vip/fwvip-i2c` | UVM VIP (controller, target, monitor agents, a memory responder, a scoreboard) over the `fw-proto-i2c` kit. It has a back-to-back bench pattern and a `dfm`-driven layout this project copies. |
 | `fw-proto-i2c` (vendored by fwvip-i2c) | Synthesizable I2C controller, target and monitor transactor cores, with formal properties. This is the "library transactor" for arm B. |
@@ -53,22 +61,22 @@ block written with fw-hdl, over a library I2C transactor
 | | Phase 1 (this design) | Later |
 |---|---|---|
 | Role | Controller (master), multi-master capable | Target (slave) mode |
-| Registers | freecores map, master subset ({ref}`regs`) | Slave bits, SLADR |
-| Addressing | 7-bit and 10-bit, sequenced by software as in freecores | Hardware 10-bit header (the kit already supports it) |
-| Bus | WISHBONE Classic, 8-bit | APB, or a 32-bit-stride map |
-| Timing | Runtime PRER, freecores-compatible formula | Separate tLOW/tHIGH/setup registers |
-| Baseline for size | R76 (`dba90b2`, master-only) | HEAD (`3b067f0`) when slave mode is added |
+| Registers | The R76 map ({ref}`regs`) | — |
+| Addressing | 7-bit and 10-bit, sequenced by software as in R76 | Hardware 10-bit header (the kit already supports it) |
+| Bus | WISHBONE Classic, 32-bit, one register per word (low byte valid) | APB |
+| Timing | Runtime PRER, R76-compatible formula | Separate tLOW/tHIGH/setup registers |
+| Reference and size baseline | R76 (`dba90b2`, master-only) | A target-mode `fw-i2c` would need its own baseline |
 
-Phase 1 is master-only. The reasons:
+Phase 1 is master-only, and only one revision of the reference core is
+used: R76. The reasons:
 
-- The freecores slave mode is untested upstream, and it carries
-  defects D2–D5. A differential bench that has HEAD as its reference
-  would mostly be testing the reference.
-- Master-only matches R76, the core the PDF describes, which is the
-  credible hand-RTL baseline.
+- R76 is the core the PDF describes and the credible hand-RTL baseline.
+- The later freecores slave extension is untested upstream, adds about a
+  third to the area, and carries defects D2–D5, one of which affects
+  master operation. A master-only arm B compared against it would not be
+  a fair comparison ({doc}`../reference/later-extension`).
 - `control-synthesis-benchmark.md` already notes that slave mode adds
-  little to the transaction-level control comparison. That document
-  leaves this as an open question, so it is repeated as **OI-1** below.
+  little to the transaction-level control comparison (OI-1).
 
 ## 3. Architecture
 
@@ -96,7 +104,7 @@ flowchart LR
 | Prescaler | Small fw-hdl component or hand SV (open: OI-5) | Bit level. Reported |
 | Controller transactor | `fw-proto-i2c` `i2c_controller_xtor_core` (hand SV, library) | Bit level. Reported |
 | Bus watcher | START/STOP/busy detection; from the kit monitor core, or new | Bit level. Reported |
-| Top wrapper | freecores-compatible port names and pad polarity | Glue |
+| Top wrapper | The same pins as arm A's shim (`oc_i2c_wb32`): 32-bit WISHBONE, R76 pad names and polarity | Glue |
 
 ### 3.2 Command sequencer
 
@@ -180,19 +188,38 @@ down without one of these:
     (harnesses at prescale 0), and the fwvip-i2c UVM suite passes 8/8.
   - There is no formal proof at prescale > 0 yet.
 
+### 3.4 Arm A as integrated
+
+Arm A is not the raw freecores file set. It is:
+
+1. **`featherweight-ip/oc-i2c`, tag `r76`:** the unmodified R76 core.
+2. **Branch `fw-r76`:** a patch set that changes no behaviour. It removes
+   the `#1` delays and the `timescale.v` includes, which a Yosys
+   equivalence check proves equivalent and which synthesize identically,
+   and fixes the upstream bench for Icarus. The remaining lint warning is
+   waived, not patched, because the rewrite would change the area.
+3. **`src/ref/oc_i2c_wb32.sv`:** the 32-bit WISHBONE shim. Register n sits
+   at byte address 4·n, writes need `sel[0]`, `arst_i` is tied inactive,
+   and the only logic is one AND gate.
+
+Defect fixes are deliberately not applied to arm A. Details, tests and
+sizes are in {doc}`../reference/integration`.
+
 (regs)=
 ## 4. Registers
 
 The register map is written in SystemRDL. `src/rdl/oc_i2c_master.rdl`
-already describes the freecores HEAD map. `fw-i2c` gets its own top
-(`fw_i2c_regs`) that reuses those definitions, minus the slave fields for
-phase 1.
+already describes the R76 map. `fw-i2c` gets its own top
+(`fw_i2c_regs`) that reuses those definitions.
 
-**Proposed phase-1 map:** the R76 map. That is: PRERlo, PRERhi, CTR (EN,
-IEN), TXR/RXR, CR/SR, the TXR and CR readbacks at 0x5 and 0x6, and 0x7
-reading 0. The readbacks cost 16 read-mux inputs and make the map
-identical to R76, so the same firmware and the same register-level tests
-run on both arms.
+**The map is the R76 map on a 4-byte stride**, which is what arm A's shim
+presents: PRERlo (0x00), PRERhi (0x04), CTR (0x08), TXR/RXR (0x0C),
+CR/SR (0x10), the TXR and CR readbacks (0x14, 0x18), and 0x1C reading 0.
+Registers are 32 bits wide with only bits [7:0] implemented, and writes
+need `sel[0]`. The readbacks cost 16 read-mux inputs and make the map
+identical to arm A's, so the same firmware and the same register-level
+tests run on both arms. A 32-bit register width also suits
+peakrdl-fw-hdl, which wants one access width per map.
 
 ### 4.1 Tooling gaps (peakrdl-fw-hdl and `fw_reg_block`)
 
@@ -233,8 +260,7 @@ fw-wb-dma. It runs on Verilator through `hdlsim.vlt`.
 
 | Image | DUT |
 |---|---|
-| `ref-r76` | freecores at `dba90b2` |
-| `ref-head` | freecores at `3b067f0` |
+| `ref` | the reference core, R76 (`packages/i2c` at `dba90b2`) |
 | `fw-model` | `fw-i2c` class model (pre-lowering), through the SPL pin binding |
 | `fw-rtl` | `fw-i2c` lowered RTL |
 | `fw-gates` | `fw-i2c` after Yosys synthesis (gate-level simulation) |
@@ -252,19 +278,17 @@ The environment contains:
 
 ### 6.2 "Back-to-back"
 
-There are three ways to put the two cores against each other. They answer
-different questions, and the proposal is to run all three:
+There are two ways to put the two cores against each other. They answer
+different questions, and the proposal is to run both:
 
 1. **Differential.** Same register stimulus, run separately on each
    image, each with its own target. The observed I2C transactions
    and register reads must match, up to the allowed-differences list.
    This is the main correctness argument.
-2. **Shared bus, multi-master.** `fw-i2c` and freecores R76 on the same
+2. **Shared bus, multi-master.** `fw-i2c` and R76 on the same
    bus, both commanded at once. Checks clock synchronization and
    arbitration between two independent implementations. This is the case
    the fwvip-i2c bench cannot cover today (it has one controller).
-3. **Interop with freecores slave mode** (phase 2). `fw-i2c` as master
-   talking to freecores HEAD as a slave. Exercises D2–D5.
 
 ### 6.3 Reference confirmation
 
@@ -300,18 +324,17 @@ fw-proto-i2c xtor core (SV) ──────────┘
 | Metrics | SB_LUT4, logic cells (ICESTORM_LC), flops, SB_CARRY, nextpnr Fmax. Fmax is reported over several placer seeds, because a single run varies. |
 | Context | Out of context (all ports on pins) for the standalone numbers. In a board build the WISHBONE side is internal, so only the 4 I2C pad signals reach pins. |
 | Granularity | Whole IP (both arms), plus per-block where the hierarchy allows it. Arm A: top / byte / bit. Arm B: regblock / sequencer / prescaler / xtor / wrapper |
-| Equalization | Same WISHBONE width (8), same 16-bit PRER, same filter, same feature set (master-only vs R76); flatten for totals, keep hierarchy for the per-block breakdown |
-| Baseline numbers | R76: 322 LUT4 / 368 LC / 46.0 MHz. HEAD: 436 LUT4 / 500 LC / 44.9 MHz (UP5K, Yosys 0.69, one seed); see {doc}`../reference/synthesis` |
+| Equalization | Same 32-bit WISHBONE (arm A through the shim), the same synchronous-only reset (it alone moves arm A by 11%), the same 16-bit PRER, the same filter, the same feature set (master-only vs R76). Flatten for totals; keep hierarchy for the per-block breakdown |
+| Baseline numbers | Arm A as compared (core + shim, sync reset): 154 FF / 285 LUT4 / 27 CARRY. The core alone with `arst_i` on a pin: 322 LUT4 / 368 LC / 46.0 MHz. See {doc}`../reference/integration` |
 
 The 12 MHz board clock gives PRER = 23 for 100 kHz and 5 for 400 kHz.
 Both cores therefore run their prescaler at small values, where the input
 filter samples every 6 or 2 clocks. That is worth noting in the results.
 
 The headline number (transaction-level control) compares the arm-B
-sequencer with the master half of the freecores byte controller. That
-block has to be cut out of arm A. Two options: synthesize
-`i2c_master_byte_ctrl` with the bit controller as a black box, or carve
-out a hand-written master-only byte FSM. This is **OI-9**.
+sequencer with the R76 byte controller, which is already a separate
+module: 26 flops and 57 LUT4 when synthesized with hierarchy kept
+({doc}`../reference/architecture`). This is **OI-9**.
 
 (open-issues)=
 ## 8. Open issues
@@ -319,26 +342,26 @@ out a hand-written master-only byte FSM. This is **OI-9**.
 | ID | Issue | Proposed answer |
 |---|---|---|
 | OI-1 | Master-only or master + slave in the first pass? | **Decided:** master-only. |
-| OI-2 | Which freecores revision is "the" reference? | **Decided:** R76. HEAD is kept as a second image. |
+| OI-2 | Which freecores revision is "the" reference? | **Decided:** R76 only, for both reference and size baseline; ivpm pins `dba90b2`. |
 | OI-3 | Register-compatible with freecores, or only behaviourally similar? | **Decided:** register-compatible with R76. |
 | OI-4 | Runtime bit rate in the kit | **Decided and implemented:** the `set_prescale()` runtime setting; see §3.3. Push and merge of the kit branch are still to do. |
 | OI-5 | Prescaler and input filter: written with fw-hdl, or hand SV? A counter is dataflow, not control. | fw-hdl if `synth-mmio` handles counters well, otherwise hand SV. Report it separately either way. |
 | OI-6 | Match or fix each quirk: STA alone, STA + STO, AL on an unexpected STOP (§3.3), the SCL period (D10), timing violations (D8). | See §5; decide after the confirmation tests (§6.3). |
 | OI-7 | Can `synth-mmio` lower this design? `fw-hdl/python/fw/hdl/PLAN.md` §5 lists non-goals for v1: multiple concurrent processes, sub-component hierarchy, derived clock domains, non-`put` protocols. The sequencer calls a transactor API (a non-`put` protocol) and sits in a hierarchy. | Spike first (plan step 3): the smallest sequencer that does `start`/`tx_byte`/`stop` through `synth-mmio`. |
 | OI-8 | Formal equivalence of model vs. lowered RTL for `synth-mmio` output | Check whether `CodegenEquiv` supports it. |
-| OI-9 | How to isolate the "transaction-level control" block in arm A for the headline comparison | Black-box the bit controller and report the byte controller (master half). Also report full-IP totals. |
-| OI-10 | Reset: freecores has both async (`arst_i`, `ARST_LVL`) and sync (`wb_rst_i`) reset. fw-hdl offers `--reset-style`. | Match the port list. Use one reset style internally and tie the other off in the wrapper. Note the cost in the comparison. |
+| OI-9 | How to isolate the "transaction-level control" block in arm A for the headline comparison | Report the R76 byte controller (a separate module) synthesized with hierarchy kept. Also report full-IP totals. |
+| OI-10 | Reset style | **Decided:** synchronous `wb_rst_i` only, in both arms. Arm A's shim ties `arst_i` inactive (−37 LUT4 on iCE40). fw-i2c is lowered with a synchronous reset. |
 | OI-11 | Naming. NAMING.md says IP repos are `fw-ip-<proto>`. | **Decided:** `fw-i2c`. |
 | OI-12 | The `i2c/` clone at the repository root duplicated the ivpm-managed `packages/i2c`. | **Done** 2026-10-17: removed; everything refers to `packages/i2c`. |
 
 (opportunities)=
 ## 9. Opportunities
 
-- **Publish the defects.** D1 and D2 (if confirmed) are real bugs in a
-  widely used core. D2 affects every master START in the shipped
-  freecores version. A short upstream issue or a note in the benchmark
-  write-up makes the "credible baseline" point more strongly than the
-  area numbers do. It also shows what the fw-hdl bench finds.
+- **Publish the defects.** D1 is a real bug in a widely used core (and D2,
+  in the later freecores revision, affects every master START). A short
+  upstream issue or a note in the benchmark write-up makes the "credible
+  baseline" point more strongly than the area numbers do. It also shows
+  what the fw-hdl bench finds.
 - **The benchmark needs a story about correctness as well as area.** A
   smaller arm B that matches R76 behaviour while fixing D1, D6 and D7 is a
   stronger result than area alone.
@@ -348,15 +371,14 @@ out a hand-written master-only byte FSM. This is **OI-9**.
 - **Split-register support in `fw_reg_block` and peakrdl-fw-hdl** (R1, R3)
   helps other OpenCores-derived IP. The UART16550, for example, overlays
   RBR/THR and IIR/FCR in the same way.
-- **Runtime timing in `fw-proto-i2c`** (the `tick` enable, §3.3) is also the open item in
-  fwvip-i2c's `open-issues.md`. Doing it here closes it there.
+- **Runtime timing in `fw-proto-i2c`** (`set_prescale()`, §3.3) was also
+  an open item in fwvip-i2c's `open-issues.md`; it is now closed there.
 - **A freecores-compatible model in fwvip-i2c.** fwvip-i2c's design §8
   item 7 proposes a "DUT register-model agent" for the OpenCores core.
   The reference model this bench needs is exactly that.
-- **An area-per-feature table.** The images already separate slave mode
-  (HEAD − R76 = +32% LUTs). Doing the same for `fw-i2c` (filter, debug
-  readbacks, 10-bit hardware headers) gives readers a cost model, not
-  just one number.
+- **An area-per-feature table.** Measure what each `fw-i2c` feature costs
+  (filter, debug readbacks, 10-bit hardware headers), so readers get a
+  cost model and not just one number.
 - **A protocol-timing checker.** D8 shows that the reference may violate
   UM10204. A monitor-side timing checker parameterized by speed mode
   turns this into a standing check for both arms.
@@ -365,8 +387,7 @@ out a hand-written master-only byte FSM. This is **OI-9**.
   the logic cells). The bench's shared-bus multi-master test can then run
   on a real open-drain bus through a PMOD with pull-ups, against a real
   I2C EEPROM or sensor. That checks the real-world behaviour, such as
-  timing under real rise times and D2's glitch on a scope, which no
-  simulation does.
+  timing under real rise times, which no simulation does.
 - **The documentation pipeline** (RDL → sphinx-peakrdl, WaveDrom,
   Mermaid) built for this reference is reusable as-is for the `fw-i2c`
   register map and the benchmark report.

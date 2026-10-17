@@ -1,0 +1,14 @@
+# Lint waivers for fw-i2c. Every waiver says why the finding is intended.
+waivers:
+- rule: WIDTHTRUNC
+  path: "**/oc-i2c/rtl/verilog/i2c_master_bit_ctrl.v"
+  reason: >-
+    `filter_cnt <= clk_cnt >> 2` (14 bits <- 16) in the R76 core, left
+    unpatched on purpose. Rewriting it as clk_cnt[15:2] is logically identical but makes
+    Yosys/ABC map the core 3 LUT4 smaller, so the reference baseline would
+    no longer be R76's area. Waived instead of patched.
+- rule: UNUSEDSIGNAL
+  path: "src/ref/oc_i2c_wb32.sv"
+  reason: >-
+    The 32-bit shim uses only wb_adr_i[4:2], wb_dat_i[7:0] and wb_sel_i[0]:
+    the core registers are one byte wide on a 4-byte stride.

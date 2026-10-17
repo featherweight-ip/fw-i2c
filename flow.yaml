@@ -1,14 +1,53 @@
 # dv-flow (dfm) project file for fw-i2c.
 #
-#   dfm run docs     Build the Sphinx documentation (warnings are errors).
+#   dfm run docs       Build the Sphinx documentation (warnings are errors).
+#   dfm run tests      Every simulation case.
+#   dfm run lint-rtl   Verilator lint of the RTL (reference core + shim).
 #
-# Lowering, simulation and synthesis tasks are added as the plan in
+# More lowering, simulation and synthesis tasks are added as the plan in
 # docs/design/plan.md proceeds.
 package:
   name: org.fwip.i2c
+
+  # The methodology-neutral DV archetype (dv-flow-libproject): the standard
+  # verbs (tests, smoke, lint-rtl, tests-info, --sim, --build).
+  uses: project.dv
   package-map: "${{ env.IVPM_PACKAGES }}/dv-flow-package-map.yaml"
 
+  imports:
+  - project.dv
+  - hdlsim
+  - hdllint
+  - fw.proto.wb
+  - fw.proto.i2c
+
+  fragments:
+  - src/ref/flow.yaml
+  - tests/ref/flow.yaml
+
   tasks:
+  - override: src-rtl
+    needs: [ref-rtl]
+
+  - override: src-spl
+    uses: std.NotProvided
+
+  - override: lint-rtl
+    needs: [lint]
+
+  - name: lint
+    uses: hdllint.Rtl
+    needs: [src-rtl]
+    with:
+      top: [oc_i2c_wb32]
+      waivers: lint-waivers.yaml
+
+  - override: tests
+    needs: [ref-wb32]
+
+  - override: smoke
+    needs: [ref-wb32]
+
   - name: docs-build
     uptodate: false
     shell: bash

@@ -57,6 +57,11 @@ address and R/W bit to TXR and issues STA + WR. For a 10-bit address:
 3. To read, issue a repeated START with `11110 a9 a8 1` (STA + WR), then
    RD commands.
 
+### RXACK after a read
+
+`SR.RXACK` is the bit on SDA in the last ACK slot. After a read command
+that is the ACK/NACK the core itself sent, not anything from the slave.
+
 ### Ending a read
 
 The last byte read should be NACKed: RD + ACK(=1) + STO (0x68). Any CR
@@ -66,10 +71,8 @@ write replaces the ACK bit, so set it on every RD command.
 
 `SR.IF` is set by:
 
-- the completion of any master command (`done`)
+- the completion of any command (`done`)
 - arbitration loss
-- the completion of a slave ACK slot, and the slave level flags; see
-  {doc}`slave-mode`
 
 IF is cleared only by writing CR with IACK = 1 (EN must be 1). A command
 can be issued and IF acknowledged in the same CR write. `wb_inta_o` is

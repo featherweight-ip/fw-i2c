@@ -34,12 +34,18 @@ package:
       url: https://github.com/featherweight-hdl/fw-hdl.git
       dep-set: default-dev
 
-    # Reference implementation: the freecores mirror of the OpenCores
-    # i2c core (Herveille master + Baier slave extension). Pinned to the
-    # commit the reference spec in docs/reference/ was written against.
-    - name: i2c
-      url: https://github.com/freecores/i2c.git
-      commit: 3b067f0
+    # Reference implementation (arm A): the OpenCores i2c core, from our
+    # fork of the freecores mirror. R76 = OpenCores SVN rev 76 (dba90b2), the
+    # last master-only RTL by R. Herveille, before the 2013 slave extension.
+    # docs/reference/ describes it.
+    # Pinned to tag r76's commit for now. The fw-r76 patch set (tag r76-fw1:
+    # #1/timescale removal and the bench ack fix; no RTL behaviour or area
+    # change) is committed locally but not yet on the remote, because the
+    # Forgejo repo is still a read-only pull mirror. Switch to `tag: r76-fw1`
+    # once it is pushed. fw-i2c's tests and lint pass with either.
+    - name: oc-i2c
+      url: https://github.com/featherweight-ip/oc-i2c.git
+      commit: dba90b2
       deps: skip
 
     # Registers: SystemRDL -> fw-hdl register model.
@@ -70,6 +76,9 @@ package:
       dep-set: default-dev
     - name: dv-flow-libformal
       url: https://github.com/dv-flow/dv-flow-libformal.git
+      dep-set: default-dev
+    - name: dv-flow-libhdllint
+      url: https://github.com/dv-flow/dv-flow-libhdllint.git
       dep-set: default-dev
 
     # Tools
