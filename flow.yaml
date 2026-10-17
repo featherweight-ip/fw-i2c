@@ -1,0 +1,18 @@
+# dv-flow (dfm) project file for fw-i2c.
+#
+#   dfm run docs     Build the Sphinx documentation (warnings are errors).
+#
+# Lowering, simulation and synthesis tasks are added as the plan in
+# docs/design/plan.md proceeds.
+package:
+  name: org.fwip.i2c
+  package-map: "${{ env.IVPM_PACKAGES }}/dv-flow-package-map.yaml"
+
+  tasks:
+  - name: docs-build
+    uptodate: false
+    shell: bash
+    run: sphinx-build -W --keep-going -q -b html "${{ rootdir }}/docs" "$TASK_RUNDIR/html"
+  - root: docs
+    desc: Build the documentation with warnings as errors (HTML in the task's rundir)
+    needs: [docs-build]
