@@ -139,7 +139,7 @@ be done in `fw-i2c` around the unchanged kit core. One item cannot.
 | START vs repeated START | The bit FSM decides from the bus state | The sequencer tracks whether it owns the bus (set by START, cleared by STOP or AL) and sets `repeated` | No |
 | STA + RD | START, then a read with no address byte | The kit cannot express it, and it is not a meaningful I2C transfer. It goes on the allowed-differences list. | No |
 | Bus busy (SR.BUSY) | START/STOP detector on the filtered lines | A small detector in `fw-i2c`, or the kit's monitor core | No |
-| AL on an unexpected STOP | Aborts the command | Report-only or not matched (OI-6). Aborting needs a kit change. | Only if matched |
+| AL on an unexpected STOP | Aborts the command | Report-only (OI-6, §8.1): not matched in the first pass. Aborting needs a kit change. | No |
 | Pad polarity | `*_padoen_o` active low, `*_pad_o` = 0 | Invert in the top wrapper | No |
 | Input filter | 2-flop sync + 3-sample majority at PRER/4 | Filter in the wrapper, in front of the core | No |
 | **Runtime bit rate** | Software writes PRER; SCL follows it | **Needs a change**; see below | **Yes** |
@@ -243,16 +243,21 @@ R5 stay hand-coded in the design.
 ## 5. Behavioural alignment
 
 "Aligned with freecores" has to be defined precisely, because the
-reference has quirks and defects. Proposed rule:
+reference has quirks and defects. The rule (OI-6 decided 2026-10-17,
+details in §8.1):
 
 - **Match** everything software can depend on: the register map and reset
   values, command semantics for the documented combinations, status-bit
   timing relative to IF, the PRER formula, and the IF/IACK protocol.
+  This includes the undocumented combinations STA alone, STA + STO and
+  RD + WR.
 - **Fix** defects that well-behaved software cannot rely on: D1
   (repeated command after a coincident write), D6 (EN-cleared runaway),
-  D7 (PRER = 0).
-- **Decide** case by case (OI-6): STA alone, STA + STO, the exact SCL
-  period (D10), the timing violations (D8), and the AL coverage (D9).
+  D7 (PRER < 2), and the UM10204 timing violations (D8).
+- **Differ** where R76 departs from its own documentation: SCL follows the
+  PDF formula exactly (D10).
+- **Match for now** the multi-master gaps (D9 STOP collision, AL on an
+  unexpected STOP), to revisit with the shared-bus bench (E12).
 
 The bench's scoreboard encodes these choices as a short list of allowed
 differences.
@@ -352,7 +357,7 @@ module: 26 flops and 57 LUT4 when synthesized with hierarchy kept
 | OI-3 | Register-compatible with freecores, or only behaviourally similar? | **Decided:** register-compatible with R76. |
 | OI-4 | Runtime bit rate in the kit | **Decided and implemented:** the `set_prescale()` runtime setting; see §3.3. Push and merge of the kit branch are still to do. |
 | OI-5 | Prescaler and input filter: written with fw-hdl, or hand SV? A counter is dataflow, not control. | fw-hdl if `synth-mmio` handles counters well, otherwise hand SV. Report it separately either way. |
-| OI-6 | Match or fix each quirk: STA alone, STA + STO, AL on an unexpected STOP (§3.3), the SCL period (D10), timing violations (D8). | The confirmation tests have run (bench-plan E3). **Proposed, for review:** see §8.1. |
+| OI-6 | Match or fix each quirk: STA alone, STA + STO, AL on an unexpected STOP (§3.3), the SCL period (D10), timing violations (D8). | **Decided** 2026-10-17, after the confirmation tests (bench-plan E3): see §8.1. |
 | OI-7 | Can `synth-mmio` lower this design? `fw-hdl/python/fw/hdl/PLAN.md` §5 lists non-goals for v1: multiple concurrent processes, sub-component hierarchy, derived clock domains, non-`put` protocols. The sequencer calls a transactor API (a non-`put` protocol) and sits in a hierarchy. | Spike first (plan step 3): the smallest sequencer that does `start`/`tx_byte`/`stop` through `synth-mmio`. |
 | OI-8 | Formal equivalence of model vs. lowered RTL for `synth-mmio` output | Check whether `CodegenEquiv` supports it. |
 | OI-9 | How to isolate the "transaction-level control" block in arm A for the headline comparison | Report the R76 byte controller (a separate module) synthesized with hierarchy kept. Also report full-IP totals. |
@@ -360,15 +365,16 @@ module: 26 flops and 57 LUT4 when synthesized with hierarchy kept
 | OI-11 | Naming. NAMING.md says IP repos are `fw-ip-<proto>`. | **Decided:** `fw-i2c`. |
 | OI-12 | The `i2c/` clone at the repository root duplicated the ivpm-managed `packages/i2c`. | **Done** 2026-10-17: removed; everything refers to `packages/i2c`. |
 
-### 8.1 OI-6: proposed resolution (for review)
+### 8.1 OI-6: resolution
 
-With D1 and D6–D10 now confirmed by simulation ({doc}`../reference/deviations`),
-this is the proposal. None of it is decided yet. Each "fix" or "differs"
-becomes a named rule in the bench's allowed-differences table
-(`tests/uvm/env/i2c_allowed_diffs.svh`) when the fw-i2c views arrive, and a
-test that targets the defect expects the rule to apply.
+Decided 2026-10-17, from D1 and D6–D10 as confirmed by simulation
+({doc}`../reference/deviations`). Each fix or difference that shows in an
+operation result or a bus event becomes a named rule in the bench's
+allowed-differences table (`tests/uvm/env/i2c_allowed_diffs.svh`) when the
+fw-i2c views arrive (bench-plan E6 onward), and a test that targets the
+defect expects its rule to apply.
 
-| Item | Evidence | Proposal | Bench rule |
+| Item | Evidence | Decision | Bench rule |
 |---|---|---|---|
 | D1 repeated command | 2 of 17 swept writes repeated the byte | **Fix** (already in §5) | `d1`, expected by a cr-race test on the `-eq` views |
 | D6 EN cleared mid-command | SCL at 90 ns, a STOP condition, AL | **Fix**: EN = 0 stops the sequencer at the next bit boundary and releases the lines | `d6` |
@@ -377,7 +383,10 @@ test that targets the defect expects the rule to apply.
 | D10 SCL 10% slow | × 1.10 in both modes | **Differ**: follow the PDF formula, 5 (PRER+1) clocks, so the programmed rate is the real one. Timing only | none |
 | D9 STOP collision not detected | R76 completes a STOP that never reached the bus, AL = 0 | **Match** in the first pass (single-master use cannot see it); revisit with the shared-bus bench (E12) and the kit's own STOP checking | `d9_stop` (E12 only) |
 | AL on an unexpected STOP (§3.3) | not exercised by E3 | **Report-only** unless the kit gains an abort; then match | `al_unexp_stop` |
-| STA alone, STA + STO | not exercised by E3 | **Match** where the kit can express it (STA + STO is START, a byte, STOP); STA + RD stays a rule | `sta_rd` |
+| STA alone | {doc}`../reference/operation` | **Match**: nothing on the bus; STA stays pending (visible in CR_DBG, holds SR.AL clear) until the next CR write | none |
+| STA + STO | {doc}`../reference/operation` | **Match**: START, the TXR byte, receive ACK, STOP (the kit's `start` with TXR, then `stop`) | none |
+| RD + WR | {doc}`../reference/operation` | **Match**: treated as RD | none |
+| STA + RD | {doc}`../reference/operation` | **Differs**: the kit cannot read without an address byte (§3.3) | `sta_rd` |
 
 Fixing D8 and D10 changes no operation result and no bus event, so the
 equivalence views need no rule for them. The timing report shows the
@@ -426,5 +435,4 @@ UM10204 instead of against R76.
 
 1. Review and push the `runtime-prescale` branches of `fw-proto-i2c`
    and `fwvip-i2c` (§3.3).
-2. OI-6: the reference confirmation tests have run; review the proposal
-   in §8.1.
+2. OI-6 is decided (§8.1).
