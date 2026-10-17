@@ -39,5 +39,5 @@ virtual class i2c_model_base;
         -> m_irq_ev;
     endfunction
     task wait_irq_change(); @m_irq_ev; endtask
-    function bit irq_level(); return m_irq_level; endfunction
+    virtual function bit irq_level(); return m_irq_level; endfunction
 endclass

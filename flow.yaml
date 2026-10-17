@@ -17,18 +17,20 @@ package:
   with:
     images:
       type: list
-      value: [ref]
-      values: [ref]
+      value: [ref, ref-eq]
+      values: [ref, ref-eq]
       cli: true
-      desc: Views the universal tests run on (bench-plan §3.4)
+      desc: Views the universal tests run on (bench-plan §3.4); ref-eq is the equivalence self-test (R76 vs R76)
     view_tb:
       type: map
       value:
-        ref: [oc_i2c_ref_arm.sv, hdl_top_ref.sv, hvl_top_ref.sv]
+        ref:    [oc_i2c_ref_arm.sv, hdl_top_ref.sv, hvl_top_ref.sv]
+        ref-eq: [oc_i2c_ref_arm.sv, hdl_top_ref_eq.sv, hvl_top_ref_eq.sv]
     view_top:
       type: map
       value:
-        ref: [hvl_top_ref]
+        ref:    [hvl_top_ref]
+        ref-eq: [hvl_top_ref_eq]
 
   imports:
   - project.dv.uvm
@@ -62,7 +64,7 @@ package:
       waivers: lint-waivers.yaml
 
   - override: tests
-    needs: [uvm.uvm-universal]
+    needs: [uvm.uvm-universal, uvm.uvm-eq-selftest]
 
   - override: smoke
     needs: [uvm.uvm-universal]

@@ -46,6 +46,16 @@ These are the common tests of the fw-i2c bench ({doc}`../design/bench-plan`
 E2), run on the `ref` view (`tests/uvm/`). They replaced the directed test
 `ref_wb32` (`tests/ref/`).
 
+The same tests also run on `ref-eq`, the equivalence self-test
+({doc}`../design/bench-plan` E4): two R76 arms under the equivalence
+scoreboards, one standing in for the design under test.
+
+| Case | Status | What |
+|---|---|---|
+| `ref-eq-<case>` (all 9) | **passing** | Identical arms: no operation, bus, register or interrupt difference |
+| `ref-eq-<case>-x2` (all 9) | **passing** | R76 at PRER' = 2(PRER+1) − 1: still no difference; the timing report shows R76/DUT 1.8–2.4 |
+| `ref-eq-sabotage` | **passing** | The mirror inverts R76's ACK of one data byte; both scoreboards report it (the test expects exactly that) |
+
 ## Planned confirmation tests (fw-i2c bench)
 
 The `fw-i2c` back-to-back bench (see {doc}`../design/index`) runs this

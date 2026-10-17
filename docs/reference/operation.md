@@ -44,8 +44,11 @@ The last three rows are behaviours the PDF does not describe:
 
 While a command is in progress, `SR.TIP` is 1 for RD and WR commands and
 0 for STO-only commands. When the command completes, the byte controller
-pulses `done`. One clock later: STA, STO, RD and WR clear, TIP falls, IF
-rises and RXACK is updated.
+pulses `done`. One clock later: STA, STO, RD and WR clear, IF rises and
+RXACK is updated. TIP falls one clock after that, because it is registered
+from RD | WR. For that one clock SR reads IF = 1 with TIP = 1 (0x43 in the
+middle of a transfer), so software that polls must treat a command as
+complete when IF = 1 **and** TIP = 0 (found by the bench, bench-plan E4).
 
 ### Address bytes and 10-bit addressing
 

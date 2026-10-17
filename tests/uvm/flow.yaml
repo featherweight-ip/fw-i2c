@@ -18,7 +18,9 @@ fragment:
     - "flags-comp-${{ build }}"
 
   # Each view's design sources. `ref` is R76 behind the 32-bit shim.
-  - { name: view-src-ref, passthrough: all, consumes: none, needs: [ref-rtl] }
+  - { name: view-src-ref,    passthrough: all, consumes: none, needs: [ref-rtl] }
+  # The equivalence self-test: two R76 arms (bench-plan §3.4, E4).
+  - { name: view-src-ref-eq, passthrough: all, consumes: none, needs: [ref-rtl] }
 
   - root: sim-img
     desc: Simulation image for one view
@@ -27,12 +29,12 @@ fragment:
         type: str
         value: ref
         cli: true
-        values: [ref]
+        values: [ref, ref-eq]
         doc: View to build
     strategy:
       select:
         axes:
-          view: [ref]
+          view: [ref, ref-eq]
         default: {view: "${{ view }}"}
       body:
       - uses: project.dv.uvm.utils.tb-img
@@ -68,5 +70,33 @@ fragment:
       - "flags-run-${{ build }}"
       with:
         name: "${{ this.image }}-${{ this.case.name }}"
+        testname: "${{ this.case.testname }}"
+        plusargs: "${{ this.case.plusargs }}"
+
+  # The rest of the equivalence self-test on ref-eq (bench-plan §3.4): a
+  # sabotaged mirror must be caught, and every common test must still pass
+  # with R76's PRER scaled (the timing report shows the ratio).
+  - name: uvm-eq-selftest
+    strategy:
+      matrix:
+        case:
+        - { name: sabotage,      testname: fw_i2c_eq_sabotage_test, plusargs: [] }
+        - { name: smoke-x2,      testname: fw_i2c_smoke_test,   plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: reg-x2,        testname: fw_i2c_reg_test,     plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: write-x2,      testname: fw_i2c_write_test,   plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: read-x2,       testname: fw_i2c_read_test,    plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: nack-x2,       testname: fw_i2c_nack_test,    plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: irq-x2,        testname: fw_i2c_irq_test,     plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: prer-x2,       testname: fw_i2c_prer_test,    plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: stretch-x2,    testname: fw_i2c_stretch_test, plusargs: [EQ_REF_PRER_SCALE=2] }
+        - { name: addr10-x2,     testname: fw_i2c_addr10_test,  plusargs: [EQ_REF_PRER_SCALE=2] }
+    body:
+    - name: "ref-eq-${{ this.case.name }}"
+      uses: hdlsim.vlt.SimUVMCase
+      needs:
+      - "sim-img.ref-eq"
+      - "flags-run-${{ build }}"
+      with:
+        name: "ref-eq-${{ this.case.name }}"
         testname: "${{ this.case.testname }}"
         plusargs: "${{ this.case.plusargs }}"

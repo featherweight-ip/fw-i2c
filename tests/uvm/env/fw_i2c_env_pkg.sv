@@ -17,5 +17,11 @@ package fw_i2c_env_pkg;
     `include "i2c_bus_log.svh"
     `include "i2c_pss_mem_adapter.svh"
     `include "i2c_ref_model.svh"
+    `include "i2c_eq_report.svh"
+    `include "i2c_allowed_diffs.svh"
+    `include "i2c_stream_cmp.svh"
+    `include "i2c_mirror_target.svh"
+    `include "i2c_eq_model.svh"
+    `include "fw_i2c_op_eq.svh"
     `include "fw_i2c_env.svh"
 endpackage

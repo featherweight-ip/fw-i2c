@@ -97,9 +97,14 @@ repeated START) are built from these and add nothing to the comparison.
 
 ## Waiting
 
-An operation is complete when SR.IF is 1. IF is set by the completion of
-every command, including STO alone, and by arbitration loss. SR.TIP cannot
-be used: it stays 0 for a STO-only command, and it lags CR by one clock.
+An operation is complete when SR.IF is 1 and SR.TIP is 0. IF is set by the
+completion of every command, including STO alone, and by arbitration loss.
+SR.TIP alone cannot be used: it stays 0 for a STO-only command. IF alone is
+not enough either: R76 sets IF in the clock that clears the command bits,
+and TIP (registered from them) falls one clock later, so a status read in
+that clock sees IF = 1 with TIP = 1 (SR = 0x43 at the end of a byte). The
+equivalence self-test found this (bench-plan E4): there the polling phase
+shifts by one read and lands in that clock.
 
 The wait is `completion_wait`: a loop over `completion_check` and
 `wait_related_event` (fw-wb-dma's `wait_hint`). `wait_related_event`

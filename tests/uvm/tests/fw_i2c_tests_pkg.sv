@@ -19,4 +19,5 @@ package fw_i2c_tests_pkg;
     `include "fw_i2c_prer_test.svh"
     `include "fw_i2c_stretch_test.svh"
     `include "fw_i2c_addr10_test.svh"
+    `include "fw_i2c_eq_sabotage_test.svh"
 endpackage

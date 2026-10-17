@@ -1,5 +1,7 @@
-// The completion condition every byte operation shares: SR.IF. TIP cannot be
-// used (0 for STO-only commands, and it lags CR by a clock).
+// The completion condition every byte operation shares: SR.IF with SR.TIP
+// clear. IF alone is not enough: R76 sets IF on the clock it clears the command
+// bits, and TIP follows a clock later, so a read in that clock sees IF = 1,
+// TIP = 1. TIP alone cannot be used either (0 for STO-only commands).
 import fw_i2c_regs_pkg::*;
 import fw_i2c_types_pkg::*;
 
@@ -18,7 +20,7 @@ extend component fw_i2c_c {
         st.sr.al       = sr.AL;
         st.sr.tip      = sr.TIP;
         st.sr.irq_flag = sr.IF;
-        st.done        = sr.IF;
+        st.done        = sr.IF && !sr.TIP;
         return st;
     }
 

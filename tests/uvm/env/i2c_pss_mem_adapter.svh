@@ -17,6 +17,7 @@ class i2c_pss_mem_adapter implements fw_i2c_c_imp_if;
         bit [31:0] rd;
         bit        err;
         n_writes++;
+        `uvm_info("PSSBUS", $sformatf("%s: write 0x%02h <- 0x%02h", model.name, addr, data), UVM_DEBUG)
         model.rf_if().access(32'(addr), data, 4'hF, 1'b1, rd, err);
         if (err) `uvm_error("PSSBUS", $sformatf("%s: write 0x%0h <- 0x%08h: bus error",
                                                 model.name, addr, data))
@@ -26,6 +27,7 @@ class i2c_pss_mem_adapter implements fw_i2c_c_imp_if;
         bit err;
         n_reads++;
         model.rf_if().access(32'(addr), 32'h0, 4'hF, 1'b0, data, err);
+        `uvm_info("PSSBUS", $sformatf("%s: read  0x%02h -> 0x%02h", model.name, addr, data), UVM_DEBUG)
         if (err) `uvm_error("PSSBUS", $sformatf("%s: read 0x%0h: bus error",
                                                 model.name, addr))
     endtask
