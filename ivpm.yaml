@@ -27,12 +27,9 @@ package:
 
   # Building, verifying, lowering, synthesizing and documenting the IP.
   #
-  # NOTE (2026-10-17): fw-i2c needs commits that are on the local `main` of
-  # four clones but not yet pushed: fw-proto-i2c (i2c_tlm_bus), fw-hdl
-  # (FW_REG_RO/WO decode access, pulse_mask), peakrdl-fw-hdl (.access /
-  # .pulse_mask emission) and peakrdl-pss (singlepulse on write-only fields).
-  # A fresh `ivpm update` fetches the remote heads, without them, until they
-  # are pushed. See docs/design/bench-plan.md section 9.
+  # fw-i2c needs (2026-10-17): fw-proto-i2c c6f82ea (i2c_tlm_bus), fw-hdl
+  # a4eada1 (FW_REG_RO/WO decode access, pulse_mask), peakrdl-fw-hdl 08c851a
+  # and peakrdl-pss bdfc8f2, or later. All are on the remotes' main.
   - name: dev
     description: The use set plus the reference core, VIP, tools and Sphinx.
     uses: [use]
