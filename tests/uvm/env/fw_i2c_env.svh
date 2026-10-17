@@ -7,6 +7,7 @@ class fw_i2c_env extends uvm_env;
 
     i2c_model_base      model;
     i2c_pss_mem_adapter pss;
+    fw_i2c_regs_c       regs;   // the generated register group, for register-level tests
     i2c_mem_target      tgt;
     i2c_bus_log         log;
 
@@ -17,6 +18,7 @@ class fw_i2c_env extends uvm_env;
         if (!uvm_config_db #(i2c_model_base)::get(this, "", "model", model))
             `uvm_fatal("CFG", "no i2c_model_base \"model\" in the config DB")
         pss = new(model);
+        regs = new(pss, 0);
         tgt = new();
         log = new();
         model.tgt.impl = tgt;

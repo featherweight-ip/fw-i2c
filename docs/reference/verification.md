@@ -32,7 +32,19 @@ protocol monitor and no coverage collection.
 
 | Case | Status | What |
 |---|---|---|
-| `ref_wb32` | **passing** | The core behind the 32-bit shim, against a `fw-proto-i2c` target: register map, `sel[0]`, a write and repeated-START read, address NACK, IF/IACK ({doc}`integration`) |
+| `ref-smoke` | **passing** | A write, a repeated-START read back, an address NACK, BUSY after STOP |
+| `ref-reg` | **passing** | Register map: reset values, stride, zero-extended reads, writes take bits [7:0] and need `sel[0]`, `adr[1:0]` ignored, TXR/CR readbacks, reserved word, CR ignored while EN = 0, IACK and CR bits 2:1 self-clear, CR.ACK holds |
+| `ref-write` | **passing** | Multi-byte, single-byte and pointer-only writes |
+| `ref-read` | **passing** | Repeated-START reads, a current-address read, a 1-byte read |
+| `ref-nack` | **passing** | Unanswered write and read addresses; a data byte NACKed by the target; STOP on its own |
+| `ref-irq` | **passing** | Polled operations with IEN = 0 (line stays low); IEN with IF pending; IACK alone; clearing IEN; interrupt-driven operations |
+| `ref-prer` | **passing** | PRER 2, 4, 9, 24: same data and bus events; transfer time grows with PRER (ratios 1.63, 2.87, 6.92 against PRER+1 ratios 1.67, 3.33, 8.33) |
+| `ref-stretch` | **passing** | Responder latency on every decision: same data and bus events, each decision adds its latency |
+| `ref-addr10` | **passing** | 10-bit write and repeated-START read sequenced by software; NACK on either header byte |
+
+These are the common tests of the fw-i2c bench ({doc}`../design/bench-plan`
+E2), run on the `ref` view (`tests/uvm/`). They replaced the directed test
+`ref_wb32` (`tests/ref/`).
 
 ## Planned confirmation tests (fw-i2c bench)
 
@@ -45,6 +57,6 @@ per defect:
 |---|---|---|
 | `ref_cr_race` | D1 | Write TXR in the clock where `done` pulses (use a hierarchical probe to time it); count bytes on the bus with the monitor. |
 | `ref_en_midbyte` | D6 | Clear EN in the middle of a byte; measure bit timing. |
-| `ref_prer0` | D7 | PRER = 0, one byte write; count bits and STOPs. (PRER = 1 is already shown failing by `ref_wb32 +PRER=1`.) |
+| `ref_prer0` | D7 | PRER = 0, one byte write; count bits and STOPs. (PRER = 1 is already shown failing by `ref-smoke +PRER=1`.) |
 | `ref_timing` | D8, D10 | Monitor-measured tSU;STA, tVD;DAT and SCL period at nominal Sm/Fm PRER. |
 | `ref_arb` | D9 | Two controllers (core + VIP) with identical then diverging address bytes, and a START collision. |

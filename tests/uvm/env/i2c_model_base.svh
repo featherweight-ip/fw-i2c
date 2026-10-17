@@ -28,6 +28,10 @@ virtual class i2c_model_base;
     // the env before the first operation.
     virtual task start(); endtask
 
+    // 1 if the view models bus timing (SCL periods, clock stretching), so
+    // tests may check durations. An untimed TLM view returns 0.
+    virtual function bit timed(); return 1'b1; endfunction
+
     // ---- interrupt seam ----
     virtual function void irq_changed(bit level);
         if (level === m_irq_level) return;

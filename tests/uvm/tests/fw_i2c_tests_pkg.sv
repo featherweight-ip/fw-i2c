@@ -11,4 +11,12 @@ package fw_i2c_tests_pkg;
 
     `include "fw_i2c_base_test.svh"
     `include "fw_i2c_smoke_test.svh"
+    `include "fw_i2c_reg_test.svh"
+    `include "fw_i2c_write_test.svh"
+    `include "fw_i2c_read_test.svh"
+    `include "fw_i2c_nack_test.svh"
+    `include "fw_i2c_irq_test.svh"
+    `include "fw_i2c_prer_test.svh"
+    `include "fw_i2c_stretch_test.svh"
+    `include "fw_i2c_addr10_test.svh"
 endpackage

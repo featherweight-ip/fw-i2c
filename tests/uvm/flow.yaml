@@ -51,7 +51,15 @@ fragment:
       matrix:
         image: "${{ images }}"
         case:
-        - { name: smoke, testname: fw_i2c_smoke_test, plusargs: [] }
+        - { name: smoke,   testname: fw_i2c_smoke_test,   plusargs: [] }
+        - { name: reg,     testname: fw_i2c_reg_test,     plusargs: [] }
+        - { name: write,   testname: fw_i2c_write_test,   plusargs: [] }
+        - { name: read,    testname: fw_i2c_read_test,    plusargs: [] }
+        - { name: nack,    testname: fw_i2c_nack_test,    plusargs: [] }
+        - { name: irq,     testname: fw_i2c_irq_test,     plusargs: [] }
+        - { name: prer,    testname: fw_i2c_prer_test,    plusargs: [] }
+        - { name: stretch, testname: fw_i2c_stretch_test, plusargs: [] }
+        - { name: addr10,  testname: fw_i2c_addr10_test,  plusargs: [] }
     body:
     - name: "${{ this.image }}-${{ this.case.name }}"
       uses: hdlsim.vlt.SimUVMCase

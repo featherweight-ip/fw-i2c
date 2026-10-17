@@ -87,8 +87,9 @@ P&R and Fmax come from a board-level top where WISHBONE is internal.
 
 ### Test
 
-`tests/ref/oc_i2c_wb32_tb.sv` (`dfm run tests`, case `ref_wb32`) drives the
-shim with a `fw-proto-wb` initiator. The core's pads connect to a
+The common tests of the UVM bench on the `ref` view (`tests/uvm/`,
+`dfm run tests`; cases `ref-reg`, `ref-write`, ... in {doc}`verification`)
+drive the shim with a `fw-proto-wb` initiator. The core's pads connect to a
 `fw-proto-i2c` target with a memory responder. It checks:
 
 - the stride, the zero-extended reads, and the reset values
@@ -98,5 +99,6 @@ shim with a `fw-proto-wb` initiator. The core's pads connect to a
 - an address NACK
 - IF, IACK and `wb_inta_o`
 
-`+PRER=<n>` sets the prescaler (default 5). The test passes for PRER = 2,
-3, 4, 5 and 23 and fails for PRER = 1 (see D7 in {doc}`deviations`).
+`+PRER=<n>` sets the prescaler (default 4); `ref-prer` sweeps PRER = 2, 4, 9
+and 24. The earlier directed test passed for PRER = 2, 3, 4, 5 and 23 and
+failed for PRER = 1 (see D7 in {doc}`deviations`).

@@ -42,7 +42,6 @@ package:
   - src/rdl/flow.yaml
   - src/pss/flow.yaml
   - src/ref/flow.yaml
-  - tests/ref/flow.yaml
   - tests/uvm/flow.yaml
 
   tasks:
@@ -63,10 +62,12 @@ package:
       waivers: lint-waivers.yaml
 
   - override: tests
-    needs: [ref-wb32, uvm.uvm-universal]
+    needs: [uvm.uvm-universal]
 
   - override: smoke
-    needs: [ref-wb32]
+    needs: [uvm.uvm-universal]
+    with:
+      tests: [uvm-universal.smoke]
 
   - name: docs-build
     uptodate: false
