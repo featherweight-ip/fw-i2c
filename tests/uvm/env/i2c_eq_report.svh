@@ -2,13 +2,17 @@
 // UVM error. A self-test that sabotages one side sets expect_mismatch: the
 // difference is then reported as information and only counted, and the test
 // checks the count.
+typedef class i2c_allowed_diffs;
+
 class i2c_eq_report;
+    i2c_allowed_diffs allow;          // set by the env: defect rules (blanket())
     bit          expect_mismatch;
     int unsigned n_mismatch;
     string       first;               // the first difference reported
     int unsigned max_reported = 10;   // per scoreboard; the rest are counted
 
     function void mismatch(string id, string msg);
+        if (allow != null && allow.blanket()) return;
         n_mismatch++;
         if (n_mismatch == 1) first = msg;
         if (n_mismatch > max_reported) return;

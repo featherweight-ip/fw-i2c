@@ -8,8 +8,18 @@
 // a fixed defect calls expect(name): the run then fails if the rule never
 // applied.
 //
-// Rules are added here as the designs that need them arrive (D1, D7, STA+RD:
-// see docs/reference/deviations.md and design §3.3).
+// +EQ_EXPECT=<name>[,<name>...] does the same as expect_rule() from the
+// command line.
+//
+// Two kinds of rule:
+//   - a field rule (busy_lag) covers one field of one comparison, and the
+//     scoreboard asks allow(name) at that comparison;
+//   - a defect rule (d7) covers every difference while R76 is in the state
+//     the defect needs, because the defect makes R76's whole run diverge. The
+//     scoreboards ask blanket() before reporting any difference.
+//
+// More rules follow the OI-6 resolution (design §8.1) as the tests that
+// expect them arrive: d1, d6, sta_rd, al_unexp_stop, d9_stop.
 class i2c_allowed_diff;
     string       name;
     string       cite;
@@ -26,6 +36,9 @@ class i2c_allowed_diffs;
         add("busy_lag", "bench-plan P5",
             "SR.BUSY = 1 on R76 where the DUT reads 0, in the result of an operation that ends in STOP: R76's BUSY follows its filtered STOP detector, which lags its own IF",
             1'b1);
+        add("d7", "D7, OI-6 (design §8.1)",
+            "R76 at PRER < 2 loses arbitration against a single target; fw-i2c works at every PRER. Covers every difference while R76's PRER is below 2",
+            1'b0);
         apply_plusargs();
     endfunction
 
@@ -76,8 +89,25 @@ class i2c_allowed_diffs;
     endfunction
 
     function void apply_plusargs();
+        string s;
         apply_list("EQ_ALLOW", 1'b1);
         apply_list("EQ_DENY",  1'b0);
+        if ($value$plusargs("EQ_EXPECT=%s", s))
+            while (s.len() != 0) begin
+                int i = 0;
+                while (i < s.len() && s[i] != ",") i++;
+                if (i != 0) expect_rule(s.substr(0, i - 1));
+                s = (i < s.len()) ? s.substr(i + 1, s.len() - 1) : "";
+            end
+    endfunction
+
+    // R76's state, as the operation scoreboard last configured it.
+    bit [15:0] ref_prer = 16'hFFFF;
+
+    // 1 if a defect rule covers any difference now (and counts it).
+    function bit blanket();
+        if (ref_prer < 2 && allow("d7")) return 1'b1;
+        return 1'b0;
     endfunction
 
     function void report();

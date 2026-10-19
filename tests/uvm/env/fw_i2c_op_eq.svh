@@ -234,6 +234,7 @@ class fw_i2c_op_eq implements fw_i2c_c_ctxt_if;
 
     virtual task configure(input bit [15:0] prer, input bit ien);
         realtime t0 = $realtime, ta, tb;
+        allow.ref_prer = ref_prer(prer);
         fork
             begin a.configure(prer, ien); ta = $realtime; end
             begin b.configure(ref_prer(prer), ien); tb = $realtime; end

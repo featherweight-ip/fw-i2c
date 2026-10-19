@@ -65,6 +65,10 @@ difference the scoreboards see is BUSY after an operation that ends in
 STOP: R76 still reads 1, because its BUSY follows its filtered STOP
 detector (allowed-difference rule `busy_lag`).
 
+`uvm-fixed` runs tests at a setting where R76 has a defect fw-i2c fixes.
+So far D7: smoke, read and write at PRER 0 and 1 pass on `tlm`, and on
+`tlm-eq` the scoreboards must count R76's divergence under the rule `d7`.
+
 ## Reference confirmation tests
 
 {doc}`../design/bench-plan` E3: one directed test per suspected defect, on

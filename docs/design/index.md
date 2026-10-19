@@ -378,7 +378,7 @@ defect expects its rule to apply.
 |---|---|---|---|
 | D1 repeated command | 2 of 17 swept writes repeated the byte | **Fix** (already in §5) | `d1`, expected by a cr-race test on the `-eq` views |
 | D6 EN cleared mid-command | SCL at 90 ns, a STOP condition, AL | **Fix**: EN = 0 stops the sequencer at the next bit boundary and releases the lines | `d6` |
-| D7 PRER < 2 | AL against a single target at PRER 0 and 1 | **Fix**: correct at every PRER the kit can run | `d7` |
+| D7 PRER < 2 | AL against a single target at PRER 0 and 1 | **Fix**: correct at every PRER the kit can run | `d7` (in place: `uvm-fixed`, bench-plan E7) |
 | D8 tSU;STA (Sm), tVD;DAT (Sm, Fm) | 3.0 µs < 4.7; 4.0 µs > 3.45; 1.0 µs > 0.9 | **Fix**: meet UM10204 at the nominal PRER. Timing only: no op or bus-event difference, so no rule | none |
 | D10 SCL 10% slow | × 1.10 in both modes | **Differ**: follow the PDF formula, 5 (PRER+1) clocks, so the programmed rate is the real one. Timing only | none |
 | D9 STOP collision not detected | R76 completes a STOP that never reached the bus, AL = 0 | **Match** in the first pass (single-master use cannot see it); revisit with the shared-bus bench (E12) and the kit's own STOP checking | `d9_stop` (E12 only) |

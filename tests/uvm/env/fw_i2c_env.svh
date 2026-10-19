@@ -66,6 +66,14 @@ class fw_i2c_env extends uvm_env;
         refm.tgt.impl = mirror;
         cmp     = new();
         ref_log = new();
+        begin
+            i2c_eq_model em;
+            void'($cast(em, model));
+            op_eq.rpt.allow  = allow;
+            cmp.rpt.allow    = allow;
+            mirror.rpt.allow = allow;
+            em.rpt.allow     = allow;
+        end
         dut.mon.add(cmp.dut_side);
         refm.mon.add(cmp.ref_side);
         refm.mon.add(ref_log);

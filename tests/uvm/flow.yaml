@@ -127,3 +127,26 @@ fragment:
         name: "ref-${{ this.case.name }}"
         testname: "${{ this.case.testname }}"
         plusargs: "${{ this.case.plusargs }}"
+
+  # Defects R76 has and fw-i2c fixes (OI-6, design §8.1), on the fw-i2c views:
+  # alone the tests must pass; against R76 the scoreboards must see the
+  # difference and count it under the defect's rule (EQ_EXPECT).
+  - name: uvm-fixed
+    strategy:
+      matrix:
+        image: [tlm, tlm-eq]
+        case:
+        - { name: d7-prer1-smoke, testname: fw_i2c_smoke_test, plusargs: [PRER=1, EQ_EXPECT=d7] }
+        - { name: d7-prer0-smoke, testname: fw_i2c_smoke_test, plusargs: [PRER=0, EQ_EXPECT=d7] }
+        - { name: d7-prer1-read,  testname: fw_i2c_read_test,  plusargs: [PRER=1, EQ_EXPECT=d7] }
+        - { name: d7-prer0-write, testname: fw_i2c_write_test, plusargs: [PRER=0, EQ_EXPECT=d7] }
+    body:
+    - name: "${{ this.image }}-${{ this.case.name }}"
+      uses: hdlsim.vlt.SimUVMCase
+      needs:
+      - "sim-img.${{ this.image }}"
+      - "flags-run-${{ build }}"
+      with:
+        name: "${{ this.image }}-${{ this.case.name }}"
+        testname: "${{ this.case.testname }}"
+        plusargs: "${{ this.case.plusargs }}"
