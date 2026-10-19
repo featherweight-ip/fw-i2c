@@ -56,6 +56,15 @@ scoreboards, one standing in for the design under test.
 | `ref-eq-<case>-x2` (all 9) | **passing** | R76 at PRER' = 2(PRER+1) − 1: still no difference; the timing report shows R76/DUT 1.8–2.4 |
 | `ref-eq-sabotage` | **passing** | The mirror inverts R76's ACK of one data byte; both scoreboards report it (the test expects exactly that) |
 
+## fw-i2c against the reference
+
+The fw-i2c class model (`src/spl/`) runs the same 9 tests at TLM, alone
+(`tlm-<case>`) and against R76 under the equivalence scoreboards
+(`tlm-eq-<case>`, {doc}`../design/bench-plan` E7). All pass. The only
+difference the scoreboards see is BUSY after an operation that ends in
+STOP: R76 still reads 1, because its BUSY follows its filtered STOP
+detector (allowed-difference rule `busy_lag`).
+
 ## Reference confirmation tests
 
 {doc}`../design/bench-plan` E3: one directed test per suspected defect, on

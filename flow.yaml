@@ -17,8 +17,8 @@ package:
   with:
     images:
       type: list
-      value: [ref, ref-eq]
-      values: [ref, ref-eq]
+      value: [ref, ref-eq, tlm, tlm-eq]
+      values: [ref, ref-eq, tlm, tlm-eq]
       cli: true
       desc: Views the universal tests run on (bench-plan §3.4); ref-eq is the equivalence self-test (R76 vs R76)
     view_tb:
@@ -26,11 +26,15 @@ package:
       value:
         ref:    [oc_i2c_ref_arm.sv, hdl_top_ref.sv, hvl_top_ref.sv]
         ref-eq: [oc_i2c_ref_arm.sv, hdl_top_ref_eq.sv, hvl_top_ref_eq.sv]
+        tlm:    [fw_i2c_tlm_view_pkg.sv, hdl_top_spl.sv, hvl_top_spl.sv]
+        tlm-eq: [oc_i2c_ref_arm.sv, fw_i2c_tlm_view_pkg.sv, hdl_top_spl_eq.sv, hvl_top_spl_eq.sv]
     view_top:
       type: map
       value:
         ref:    [hvl_top_ref]
         ref-eq: [hvl_top_ref_eq]
+        tlm:    [hvl_top_spl]
+        tlm-eq: [hvl_top_spl_eq]
 
   imports:
   - project.dv.uvm
@@ -38,12 +42,14 @@ package:
   - hdllint
   - fw.proto.wb
   - fw.proto.i2c
+  - fw-hdl
   - rdl
 
   fragments:
   - src/rdl/flow.yaml
   - src/pss/flow.yaml
   - src/ref/flow.yaml
+  - src/spl/flow.yaml
   - tests/uvm/flow.yaml
 
   tasks:
@@ -51,7 +57,7 @@ package:
     needs: [ref-rtl]
 
   - override: src-spl
-    uses: std.NotProvided
+    needs: [spl]
 
   - override: lint-rtl
     needs: [lint]

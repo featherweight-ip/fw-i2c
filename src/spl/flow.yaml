@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://dv-flow.github.io/flow.dv.schema.json
+#
+# The fw-i2c class model (bench-plan E6): one SystemVerilog package over the
+# generated register block and the protocol kits. `needs` order is compile
+# order.
+fragment:
+  tasks:
+  - name: fw-i2c-spl-pkg
+    uses: std.FileSet
+    needs:
+    - fw-hdl.hdl.sv-src
+    - fw.proto.wb.files
+    - fw.proto.i2c.files
+    - reg-model
+    with:
+      type: systemVerilogSource
+      include:
+      - fw_i2c_spl_pkg.sv
+      incdirs:
+      - .
+
+  - export: spl
+    uses: std.FileSet
+    needs: [fw-i2c-spl-pkg]

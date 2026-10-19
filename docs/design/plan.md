@@ -11,8 +11,8 @@ the status column as each step finishes.
 | 3 | Spike: smallest fw-hdl sequencer (start/tx_byte/stop on the kit API) through `synth-mmio` (OI-7) | `spikes/synth-mmio/`, a go/no-go note | not started |
 | 4 | `fw-proto-i2c`: runtime `set_prescale()` on the controller (design §3.3), with kit tests; fwvip-i2c config + docs | branch `runtime-prescale` in `fwvip-i2c/packages/fw-proto-i2c` and `fwvip-i2c` | implemented and tested 2026-10-17; **not committed/pushed**; open: formal at prescale > 0 |
 | 5 | Register block: R1 split-register support in peakrdl-fw-hdl / `fw_reg_block`; `fw_i2c_regs` RDL | PRs; `src/rdl/fw_i2c_regs.rdl` | not started |
-| 6 | `fw-i2c` class model: sequencer, prescaler, filter, busy, wrapper | `src/spl/`, `src/spl-rtl/` | not started |
-| 7 | Differential bench on `fw-model`, then `fw-rtl`; shared-bus multi-master tests | `tests/uvm/` | in progress: equivalence harness and its R76-vs-R76 self-test done (bench-plan E4, view `ref-eq`) |
+| 6 | `fw-i2c` class model: sequencer, prescaler, filter, busy, wrapper | `src/spl/`, `src/spl-rtl/` | in progress: class model done and passing at TLM (bench-plan E6, E7); pin wrapper with filter (E8) not started |
+| 7 | Differential bench on `fw-model`, then `fw-rtl`; shared-bus multi-master tests | `tests/uvm/` | in progress: equivalence harness and its R76-vs-R76 self-test done (bench-plan E4, view `ref-eq`); fw-i2c vs R76 at TLM passing (E7, view `tlm-eq`) |
 | 8 | dfm synthesis flow for iCE40UP5K (iCEBreaker): Yosys `synth_ice40 -device u` + nextpnr, multi-seed Fmax; generic gate cross-check; per-block and whole-IP reports for both arms | `flow.yaml` tasks, `docs/results.md` | not started |
 | 9 | Gate-level sim of `fw-gates`; formal (sequencer properties, CodegenEquiv) | | not started |
 

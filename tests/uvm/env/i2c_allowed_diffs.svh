@@ -24,8 +24,8 @@ class i2c_allowed_diffs;
 
     function new();
         add("busy_lag", "bench-plan P5",
-            "SR.BUSY in a status result (read_status, stop, completion): it follows the core's filtered STOP detector, so it settles at a design-specific time",
-            1'b0);   // off: fw_i2c_op_eq's re-reads cover R76 lagging; enable for a DUT that lags R76
+            "SR.BUSY = 1 on R76 where the DUT reads 0, in the result of an operation that ends in STOP: R76's BUSY follows its filtered STOP detector, which lags its own IF",
+            1'b1);
         apply_plusargs();
     endfunction
 

@@ -21,6 +21,9 @@ fragment:
   - { name: view-src-ref,    passthrough: all, consumes: none, needs: [ref-rtl] }
   # The equivalence self-test: two R76 arms (bench-plan §3.4, E4).
   - { name: view-src-ref-eq, passthrough: all, consumes: none, needs: [ref-rtl] }
+  # fw-i2c: the class model at TLM, alone and against R76 (E7).
+  - { name: view-src-tlm,    passthrough: all, consumes: none, needs: [spl] }
+  - { name: view-src-tlm-eq, passthrough: all, consumes: none, needs: [spl, ref-rtl] }
 
   - root: sim-img
     desc: Simulation image for one view
@@ -29,12 +32,12 @@ fragment:
         type: str
         value: ref
         cli: true
-        values: [ref, ref-eq]
+        values: [ref, ref-eq, tlm, tlm-eq]
         doc: View to build
     strategy:
       select:
         axes:
-          view: [ref, ref-eq]
+          view: [ref, ref-eq, tlm, tlm-eq]
         default: {view: "${{ view }}"}
       body:
       - uses: project.dv.uvm.utils.tb-img
