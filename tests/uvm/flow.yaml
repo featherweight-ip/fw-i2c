@@ -79,6 +79,29 @@ fragment:
         testname: "${{ this.case.testname }}"
         plusargs: "${{ this.case.plusargs }}"
 
+  # Random operation streams (bench-plan E9), on every view in `images`:
+  # each seed is a different stream; the test checks itself against a shadow
+  # of the responder, and on the -eq views the scoreboards compare with R76.
+  - name: uvm-rand
+    strategy:
+      matrix:
+        image: "${{ images }}"
+        case:
+        - { name: rand-s1, testname: fw_i2c_rand_ops_test, plusargs: [SEED=1] }
+        - { name: rand-s2, testname: fw_i2c_rand_ops_test, plusargs: [SEED=2] }
+        - { name: rand-s3, testname: fw_i2c_rand_ops_test, plusargs: [SEED=3] }
+        - { name: rand-s4, testname: fw_i2c_rand_ops_test, plusargs: [SEED=4] }
+    body:
+    - name: "${{ this.image }}-${{ this.case.name }}"
+      uses: hdlsim.vlt.SimUVMCase
+      needs:
+      - "sim-img.${{ this.image }}"
+      - "flags-run-${{ build }}"
+      with:
+        name: "${{ this.image }}-${{ this.case.name }}"
+        testname: "${{ this.case.testname }}"
+        plusargs: "${{ this.case.plusargs }}"
+
   # The rest of the equivalence self-test on ref-eq (bench-plan §3.4): a
   # sabotaged mirror must be caught, and every common test must still pass
   # with R76's PRER scaled (the timing report shows the ratio).

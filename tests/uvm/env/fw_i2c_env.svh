@@ -56,6 +56,11 @@ class fw_i2c_env extends uvm_env;
         end
         pss_ref   = new(refm);
         allow     = new();
+        // The self-test view: the DUT arm is R76 too.
+        begin
+            i2c_ref_model rm;
+            if ($cast(rm, dut)) allow.enable("busy_lag_self");
+        end
         op_eq     = new(pss.dev, pss_ref.dev, allow);
         decisions = new();
         begin

@@ -12,7 +12,7 @@
 // command line.
 //
 // Two kinds of rule:
-//   - a field rule (busy_lag) covers one field of one comparison, and the
+//   - a field rule (busy_lag, busy_lag_self) covers one field of one comparison, and the
 //     scoreboard asks allow(name) at that comparison;
 //   - a defect rule (d7) covers every difference while R76 is in the state
 //     the defect needs, because the defect makes R76's whole run diverge. The
@@ -36,6 +36,13 @@ class i2c_allowed_diffs;
         add("busy_lag", "bench-plan P5",
             "SR.BUSY = 1 on R76 where the DUT reads 0, in the result of an operation that ends in STOP: R76's BUSY follows its filtered STOP detector, which lags its own IF",
             1'b1);
+        // On the self-test view the DUT is R76 as well and lags the same way.
+        // completion_check reads the DUT first and R76 only once the DUT is
+        // done, so the DUT can still read BUSY = 1 where R76, read later,
+        // reads 0. The env turns this on when the DUT arm is R76.
+        add("busy_lag_self", "bench-plan P5, §3.4",
+            "SR.BUSY = 1 on the DUT where R76 reads 0, when the DUT is R76 too (ref-eq): the same lag, sampled earlier on the DUT side",
+            1'b0);
         add("d7", "D7, OI-6 (design §8.1)",
             "R76 at PRER < 2 loses arbitration against a single target; fw-i2c works at every PRER. Covers every difference while R76's PRER is below 2",
             1'b0);
@@ -113,7 +120,7 @@ class i2c_allowed_diffs;
     function void report();
         foreach (rules[n]) begin
             i2c_allowed_diff r = rules[n];
-            `uvm_info("EQALLOW", $sformatf("%-10s %-3s applied %0d time(s)  [%s] %s", r.name,
+            `uvm_info("EQALLOW", $sformatf("%-13s %-3s applied %0d time(s)  [%s] %s", r.name,
                                            r.enabled ? "on" : "off", r.count, r.cite, r.desc),
                       UVM_LOW)
             if (r.expected && r.count == 0)

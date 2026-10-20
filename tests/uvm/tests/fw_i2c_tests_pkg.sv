@@ -19,6 +19,7 @@ package fw_i2c_tests_pkg;
     `include "fw_i2c_prer_test.svh"
     `include "fw_i2c_stretch_test.svh"
     `include "fw_i2c_addr10_test.svh"
+    `include "fw_i2c_rand_ops_test.svh"
     `include "fw_i2c_eq_sabotage_test.svh"
     `include "fw_i2c_um10204_test.svh"
     // Reference confirmation tests (bench-plan E3), `ref` view only.

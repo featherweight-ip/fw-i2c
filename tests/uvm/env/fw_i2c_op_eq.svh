@@ -57,12 +57,15 @@ class fw_i2c_op_eq implements fw_i2c_c_ctxt_if;
     endfunction
 
     // Compare two SR decodes. BUSY 0 on the DUT and 1 on R76 is R76's STOP
-    // detector lagging (rule busy_lag); the other way round is a difference.
+    // detector lagging (rule busy_lag); the other way round is a difference,
+    // unless the DUT is R76 too (rule busy_lag_self, the self-test view).
     protected function void cmp_sr(string op, fw_i2c_sr_s sa, fw_i2c_sr_s sb);
         if (sa.rxack != sb.rxack || sa.al != sb.al || sa.tip != sb.tip ||
             sa.irq_flag != sb.irq_flag)
             rpt.mismatch("EQOP", $sformatf("%s: out status %s vs %s", op, sr_str(sa), sr_str(sb)));
-        else if (sa.busy != sb.busy && !(!sa.busy && sb.busy && allow.allow("busy_lag")))
+        else if (sa.busy != sb.busy &&
+                 !(!sa.busy && sb.busy && allow.allow("busy_lag")) &&
+                 !(sa.busy && !sb.busy && allow.allow("busy_lag_self")))
             rpt.mismatch("EQOP", $sformatf("%s: out status BUSY %0d vs %0d", op, sa.busy, sb.busy));
     endfunction
 
