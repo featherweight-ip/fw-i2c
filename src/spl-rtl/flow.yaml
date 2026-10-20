@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://dv-flow.github.io/flow.dv.schema.json
+#
+# fw-i2c behind pins (bench-plan E8): fw_i2c_spl, with the pins of the R76
+# shim, around the class model (`spl`). For simulation.
+fragment:
+  tasks:
+  - name: fw-i2c-spl-rtl-pkg
+    uses: std.FileSet
+    needs: [spl]
+    with:
+      type: systemVerilogSource
+      include:
+      - fw_i2c_irq_xtor_if.sv
+      - fw_i2c_spl_rtl_pkg.sv
+      - fw_i2c_filter.sv
+      - fw_i2c_spl.sv
+
+  - export: spl-rtl
+    uses: std.FileSet
+    needs: [fw-i2c-spl-rtl-pkg]

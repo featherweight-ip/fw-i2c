@@ -24,6 +24,9 @@ fragment:
   # fw-i2c: the class model at TLM, alone and against R76 (E7).
   - { name: view-src-tlm,    passthrough: all, consumes: none, needs: [spl] }
   - { name: view-src-tlm-eq, passthrough: all, consumes: none, needs: [spl, ref-rtl] }
+  # fw-i2c behind pins, alone and against R76 (E8).
+  - { name: view-src-wb,     passthrough: all, consumes: none, needs: [spl-rtl] }
+  - { name: view-src-wb-eq,  passthrough: all, consumes: none, needs: [spl-rtl, ref-rtl] }
 
   - root: sim-img
     desc: Simulation image for one view
@@ -32,12 +35,12 @@ fragment:
         type: str
         value: ref
         cli: true
-        values: [ref, ref-eq, tlm, tlm-eq]
+        values: [ref, ref-eq, tlm, tlm-eq, wb, wb-eq]
         doc: View to build
     strategy:
       select:
         axes:
-          view: [ref, ref-eq, tlm, tlm-eq]
+          view: [ref, ref-eq, tlm, tlm-eq, wb, wb-eq]
         default: {view: "${{ view }}"}
       body:
       - uses: project.dv.uvm.utils.tb-img
@@ -148,5 +151,23 @@ fragment:
       - "flags-run-${{ build }}"
       with:
         name: "${{ this.image }}-${{ this.case.name }}"
+        testname: "${{ this.case.testname }}"
+        plusargs: "${{ this.case.plusargs }}"
+
+  # UM10204 timing of fw-i2c behind pins (D8, D10 fixed; OI-6, design §8.1).
+  - name: uvm-um10204
+    strategy:
+      matrix:
+        case:
+        - { name: um10204-sm, testname: fw_i2c_um10204_test, plusargs: [I2C_MODE=sm] }
+        - { name: um10204-fm, testname: fw_i2c_um10204_test, plusargs: [I2C_MODE=fm] }
+    body:
+    - name: "wb-${{ this.case.name }}"
+      uses: hdlsim.vlt.SimUVMCase
+      needs:
+      - "sim-img.wb"
+      - "flags-run-${{ build }}"
+      with:
+        name: "wb-${{ this.case.name }}"
         testname: "${{ this.case.testname }}"
         plusargs: "${{ this.case.plusargs }}"
