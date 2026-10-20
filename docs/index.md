@@ -24,6 +24,7 @@ No fw-hdl source yet. See {doc}`design/plan`.
   equivalence check against R76.
 - {doc}`design/operation-model` — the PSS operation model: the operations tests
   and the equivalence check drive, and what each returns.
+- {doc}`results` — measured results: simulation speed per bench view.
 
 ```{toctree}
 :maxdepth: 2
@@ -42,4 +43,5 @@ design/index
 design/plan
 design/bench-plan
 design/operation-model
+results
 ```
